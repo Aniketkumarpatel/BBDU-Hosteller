@@ -1,0 +1,30 @@
+{
+  "name": "bbdu-hosteller-backend",
+  "version": "0.1.0",
+  "description": "BBDU Hosteller - Smart Hostel Management & Complaint Escalation Platform (API)",
+  "private": true,
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "db:check": "node scripts/check-db.js",
+    "seed": "node seed/seed.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.5",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.10.4",
+    "morgan": "^1.12.1",
+    "zod": "^4.6.5"
+  }
+}

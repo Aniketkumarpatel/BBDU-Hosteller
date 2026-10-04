@@ -1,0 +1,35 @@
+/**
+ * Formats a User document or plain object into a safe, clean representation.
+ * Explicitly excludes passwordHash, __v, and formats the id field.
+ *
+ * @param {object} user Mongoose Document or plain object
+ * @returns {object} Safe user object
+ */
+export const sanitizeUser = (user) => {
+  if (!user) return null;
+
+  const raw = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+
+  delete raw.passwordHash;
+  delete raw.__v;
+
+  const id = raw.id || (raw._id ? String(raw._id) : undefined);
+
+  return {
+    id,
+    name: raw.name,
+    email: raw.email,
+    phone: raw.phone || undefined,
+    role: raw.role,
+    studentId: raw.studentId || undefined,
+    employeeId: raw.employeeId || undefined,
+    hostelId: raw.hostelId || undefined,
+    blockId: raw.blockId || undefined,
+    floorId: raw.floorId || undefined,
+    roomId: raw.roomId || undefined,
+    departmentId: raw.departmentId || undefined,
+    isActive: Boolean(raw.isActive),
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
+  };
+};

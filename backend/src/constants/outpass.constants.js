@@ -1,0 +1,53 @@
+/**
+ * Controlled constants for Visitor & Outpass Management Module (Step 12)
+ */
+
+export const OUTPASS_STATUSES = Object.freeze({
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+  EXIT_VERIFIED: 'EXIT_VERIFIED',
+  OUTSIDE: 'OUTSIDE',
+  RETURN_VERIFIED: 'RETURN_VERIFIED',
+  OVERDUE: 'OVERDUE',
+  EXPIRED: 'EXPIRED',
+});
+
+export const OUTPASS_STATUS_VALUES = Object.freeze(Object.values(OUTPASS_STATUSES));
+
+export const OUTPASS_PURPOSES = Object.freeze({
+  COLLEGE_WORK: 'COLLEGE_WORK',
+  FAMILY_VISIT: 'FAMILY_VISIT',
+  MEDICAL: 'MEDICAL',
+  PERSONAL: 'PERSONAL',
+  EMERGENCY: 'EMERGENCY',
+  OFFICIAL_WORK: 'OFFICIAL_WORK',
+  OTHER: 'OTHER',
+});
+
+export const OUTPASS_PURPOSE_VALUES = Object.freeze(Object.values(OUTPASS_PURPOSES));
+
+export const VISITOR_STATUSES = Object.freeze({
+  REQUESTED: 'REQUESTED',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CHECKED_IN: 'CHECKED_IN',
+  CHECKED_OUT: 'CHECKED_OUT',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED',
+});
+
+export const VISITOR_STATUS_VALUES = Object.freeze(Object.values(VISITOR_STATUSES));
+
+export const GOVERNMENT_ID_TYPES = Object.freeze({
+  AADHAAR: 'AADHAAR',
+  PAN: 'PAN',
+  VOTER_ID: 'VOTER_ID',
+  DRIVING_LICENSE: 'DRIVING_LICENSE',
+  PASSPORT: 'PASSPORT',
+  COLLEGE_ID: 'COLLEGE_ID',
+  OTHER: 'OTHER',
+});
+
+export const GOVERNMENT_ID_TYPE_VALUES = Object.freeze(Object.values(GOVERNMENT_ID_TYPES));

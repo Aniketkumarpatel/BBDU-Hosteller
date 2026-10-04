@@ -1,0 +1,61 @@
+/**
+ * Constants for Mess & Food Quality Management Module (Step 10)
+ */
+
+export const MEAL_TYPES = Object.freeze({
+  BREAKFAST: 'BREAKFAST',
+  LUNCH: 'LUNCH',
+  SNACKS: 'SNACKS',
+  DINNER: 'DINNER',
+});
+
+export const MEAL_TYPE_VALUES = Object.freeze(Object.values(MEAL_TYPES));
+
+export const DAYS_OF_WEEK = Object.freeze([
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+  'SUNDAY',
+]);
+
+export const FOOD_QUALITIES = Object.freeze({
+  EXCELLENT: 'EXCELLENT',
+  GOOD: 'GOOD',
+  AVERAGE: 'AVERAGE',
+  POOR: 'POOR',
+  VERY_POOR: 'VERY_POOR',
+});
+
+export const FOOD_QUALITY_VALUES = Object.freeze(Object.values(FOOD_QUALITIES));
+
+export const MESS_NOTICE_PRIORITIES = Object.freeze({
+  NORMAL: 'NORMAL',
+  IMPORTANT: 'IMPORTANT',
+  URGENT: 'URGENT',
+});
+
+export const MESS_NOTICE_PRIORITY_VALUES = Object.freeze(
+  Object.values(MESS_NOTICE_PRIORITIES)
+);
+
+export const HYGIENE_ALERT_THRESHOLDS = Object.freeze({
+  MIN_REVIEWS: 3,
+  ALERT_THRESHOLD_RATING: 3.0,
+  CRITICAL_THRESHOLD_RATING: 2.0,
+});
+
+export const MESS_COMPLAINT_ISSUES = Object.freeze({
+  POOR_FOOD_QUALITY: 'POOR_FOOD_QUALITY',
+  HYGIENE_ISSUE: 'HYGIENE_ISSUE',
+  FOOD_QUANTITY_ISSUE: 'FOOD_QUANTITY_ISSUE',
+  MISSING_MENU_ITEM: 'MISSING_MENU_ITEM',
+  UNDERCOOKED_FOOD: 'UNDERCOOKED_FOOD',
+  OVERCOOKED_FOOD: 'OVERCOOKED_FOOD',
+  FOREIGN_OBJECT: 'FOREIGN_OBJECT',
+  WATER_QUALITY: 'WATER_QUALITY',
+  SERVING_DELAY: 'SERVING_DELAY',
+  OTHER_MESS: 'OTHER_MESS',
+});
