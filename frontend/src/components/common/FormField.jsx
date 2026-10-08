@@ -4,9 +4,11 @@ export default function FormField({
   error,
   required = false,
   helperText,
+  helpText,
   children,
   className = '',
 }) {
+  const effectiveHelp = helperText || helpText;
   return (
     <div className={`space-y-1 ${className}`}>
       {label && (
@@ -18,8 +20,8 @@ export default function FormField({
         </label>
       )}
       {children}
-      {helperText && !error && (
-        <p className="text-[11px] text-slate-500">{helperText}</p>
+      {effectiveHelp && !error && (
+        <p className="text-[11px] text-slate-500">{effectiveHelp}</p>
       )}
       {error && <p className="text-[11px] font-medium text-rose-600">{error}</p>}
     </div>

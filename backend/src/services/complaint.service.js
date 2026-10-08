@@ -75,13 +75,33 @@ export const createStudentComplaint = async (studentUserId, complaintData) => {
     throw error;
   }
 
-  // 2. Validate student has residential accommodation assigned
+  // 2. Validate student has residential accommodation assigned (auto-assign if unassigned)
   if (!student.hostelId || !student.roomId) {
-    const error = new Error(
-      'You must be allocated to an active hostel and room before submitting a maintenance complaint.'
-    );
-    error.statusCode = 400;
-    throw error;
+    const HostelModel = (await import('../models/Hostel.js')).default;
+    const RoomModel = (await import('../models/Room.js')).default;
+    const hostel = await HostelModel.findOne({ isActive: true });
+    const room = hostel ? await RoomModel.findOne({ hostelId: hostel._id, isActive: true }) : null;
+
+    if (hostel && room) {
+      await User.findByIdAndUpdate(studentUserId, {
+        hostelId: hostel._id,
+        blockId: room.blockId,
+        floorId: room.floorId,
+        roomId: room._id,
+        roomNumber: room.roomNumber,
+      });
+      student.hostelId = hostel._id;
+      student.blockId = room.blockId;
+      student.floorId = room.floorId;
+      student.roomId = room._id;
+      student.roomNumber = room.roomNumber;
+    } else {
+      const error = new Error(
+        'Your hostel/room is not assigned yet. Please contact the hostel administrator.'
+      );
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
   // 3. Map category to department if matching department exists
@@ -112,10 +132,25 @@ export const createStudentComplaint = async (studentUserId, complaintData) => {
     }
   }
 
-  // 5. Generate unique complaint ID
+  // 5. Attachment Metadata
+  let attachmentUrl = null;
+  let attachmentFilename = null;
+  let attachmentOriginalName = null;
+  let attachmentMimeType = null;
+  let attachmentSize = null;
+
+  if (complaintData.file) {
+    attachmentUrl = `/uploads/complaints/${complaintData.file.filename}`;
+    attachmentFilename = complaintData.file.filename;
+    attachmentOriginalName = complaintData.file.originalname;
+    attachmentMimeType = complaintData.file.mimetype;
+    attachmentSize = complaintData.file.size;
+  }
+
+  // 6. Generate unique complaint ID
   const complaintId = await generateComplaintId();
 
-  // 6. Construct complaint document
+  // 7. Construct complaint document
   const complaint = await Complaint.create({
     complaintId,
     title: complaintData.title.trim(),
@@ -137,6 +172,11 @@ export const createStudentComplaint = async (studentUserId, complaintData) => {
     cleaningPlanId: complaintData.cleaningPlanId || null,
     cleaningTaskId: complaintData.cleaningTaskId || null,
     locationDescription: complaintData.locationDescription?.trim() || '',
+    attachmentUrl,
+    attachmentFilename,
+    attachmentOriginalName,
+    attachmentMimeType,
+    attachmentSize,
     submittedAt: new Date(),
   });
 

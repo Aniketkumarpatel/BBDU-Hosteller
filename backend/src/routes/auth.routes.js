@@ -21,6 +21,12 @@ const authLimiter = rateLimit({
   },
 });
 
+// Public endpoints for registration allocation dropdowns
+router.get('/hostels', authController.getPublicHostels);
+router.get('/blocks', authController.getPublicBlocks);
+router.get('/floors', authController.getPublicFloors);
+router.get('/rooms', authController.getPublicRooms);
+
 router.post('/register', authLimiter, validate(registerSchema), authController.register);
 router.post('/login', authLimiter, validate(loginSchema), authController.login);
 router.get('/me', requireAuth, authController.getMe);

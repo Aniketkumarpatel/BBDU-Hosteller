@@ -399,14 +399,23 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       getStudentComplaintMetrics(_id),
     ]);
 
+    let hostel = student.hostelId || null;
+    let block = student.blockId || null;
+    let floor = student.floorId || null;
+    let room = student.roomId || null;
+
+    if (!room && student.roomNumber) {
+      room = { roomNumber: student.roomNumber };
+    }
+
     return res.status(200).json({
       success: true,
       data: {
         student: sanitizeUser(student),
-        hostel: student.hostelId || null,
-        block: student.blockId || null,
-        floor: student.floorId || null,
-        room: student.roomId || null,
+        hostel,
+        block,
+        floor,
+        room,
         department: student.departmentId || null,
         roommates: roommates.map((r) => ({
           id: r._id,

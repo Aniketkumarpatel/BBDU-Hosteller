@@ -30,6 +30,7 @@ export default function MessDashboardPage() {
   // Modals
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackMealType, setFeedbackMealType] = useState('LUNCH');
+  const [feedbackMealDate, setFeedbackMealDate] = useState(new Date().toISOString().split('T')[0]);
   const [feedbackRating, setFeedbackRating] = useState(4);
   const [feedbackQuality, setFeedbackQuality] = useState('GOOD');
   const [feedbackTaste, setFeedbackTaste] = useState(4);
@@ -111,16 +112,45 @@ export default function MessDashboardPage() {
     loadMessDetails(id);
   };
 
+  // Navigation & Date State
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  const getDayOfWeekFromDate = (dateStr) => {
+    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const d = new Date(dateStr);
+    return days[d.getDay()];
+  };
+
+  const handleDateChange = (newDateStr) => {
+    setSelectedDate(newDateStr);
+  };
+
+  const changeDateByDays = (days) => {
+    const current = new Date(selectedDate);
+    current.setDate(current.getDate() + days);
+    setSelectedDate(current.toISOString().split('T')[0]);
+  };
+
   // Submit Feedback Handler
   const handleSubmitFeedback = async (e) => {
     e.preventDefault();
     setSubmittingFeedback(true);
     setFeedbackMsg(null);
+
+    if (!selectedMessId) {
+      setFeedbackMsg({
+        type: 'error',
+        text: 'Mess allocation is not available for your account.',
+      });
+      setSubmittingFeedback(false);
+      return;
+    }
+
     try {
       const res = await messService.submitFeedback({
         messId: selectedMessId,
         mealType: feedbackMealType,
-        mealDate: new Date().toISOString().split('T')[0],
+        mealDate: feedbackMealDate || selectedDate,
         rating: Number(feedbackRating),
         foodQuality: feedbackQuality,
         taste: Number(feedbackTaste),
@@ -139,18 +169,26 @@ export default function MessDashboardPage() {
         }, 1200);
       }
     } catch (err) {
-      setFeedbackMsg({
-        type: 'error',
-        text: err?.response?.data?.message || 'Error submitting meal feedback',
-      });
+      const errMsg = err?.response?.data?.message || err.message || '';
+      if (errMsg.toLowerCase().includes('already submitted') || errMsg.toLowerCase().includes('duplicate')) {
+        setFeedbackMsg({
+          type: 'error',
+          text: 'You have already submitted feedback for this meal on this date.',
+        });
+      } else {
+        setFeedbackMsg({
+          type: 'error',
+          text: errMsg || 'Error submitting meal feedback',
+        });
+      }
     } finally {
       setSubmittingFeedback(false);
     }
   };
 
-  // Save Menu Handler
-  const handleSaveMenu = async (e) => {
-    e.preventDefault();
+  // Save Menu Handler (Supports Save Draft or Publish Menu)
+  const handleSaveMenu = async (e, publishStatus = true) => {
+    if (e && e.preventDefault) e.preventDefault();
     setSavingMenu(true);
     try {
       const items = menuForm.itemsText
@@ -164,7 +202,7 @@ export default function MessDashboardPage() {
         mealType: menuForm.mealType,
         menuItems: items,
         notes: menuForm.notes,
-        isPublished: menuForm.isPublished,
+        isPublished: publishStatus,
       });
 
       setShowMenuModal(false);
@@ -220,6 +258,23 @@ export default function MessDashboardPage() {
 
   const stats = dashboardData?.stats || {};
   const currentMess = messes.find((m) => m._id === selectedMessId) || dashboardData?.mess;
+  const activeDayOfWeek = getDayOfWeekFromDate(selectedDate);
+
+  // Helper to find menu for day of week & meal type
+  const getMenuForMeal = (meal) => {
+    // Look in weeklyMenus first
+    const found = weeklyMenus.find(
+      (m) => m.dayOfWeek === activeDayOfWeek && m.mealType === meal
+    );
+    if (found) return found;
+
+    // Fallback to todayMenu if dates match today
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (selectedDate === todayStr && dashboardData?.todayMenu?.[meal]) {
+      return dashboardData.todayMenu[meal];
+    }
+    return null;
+  };
 
   return (
     <DashboardLayout
@@ -275,11 +330,12 @@ export default function MessDashboardPage() {
                   <button
                     onClick={() => {
                       setFeedbackMealType('LUNCH');
+                      setFeedbackMealDate(selectedDate);
                       setShowFeedbackModal(true);
                     }}
                     className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700 flex items-center gap-1.5"
                   >
-                    <span>★</span> Rate Today's Meal
+                    <span>★</span> Rate Meal
                   </button>
                   <Link
                     to="/student/complaints/new"
@@ -293,10 +349,19 @@ export default function MessDashboardPage() {
               {canManage && (
                 <>
                   <button
-                    onClick={() => setShowMenuModal(true)}
+                    onClick={() => {
+                      setMenuForm({
+                        dayOfWeek: activeDayOfWeek,
+                        mealType: 'BREAKFAST',
+                        itemsText: '',
+                        notes: '',
+                        isPublished: true,
+                      });
+                      setShowMenuModal(true);
+                    }}
                     className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700"
                   >
-                    + Manage Menu
+                    + Add Menu
                   </button>
                   <button
                     onClick={() => setShowNoticeModal(true)}
@@ -401,6 +466,49 @@ export default function MessDashboardPage() {
             </div>
           </div>
 
+          {/* Date Selector Navigation Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-700">Select Date:</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => changeDateByDays(-1)}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-100"
+                >
+                  ◄ Previous Day
+                </button>
+                <button
+                  onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                  className={`rounded-lg px-3 py-1 text-xs font-bold transition ${
+                    selectedDate === new Date().toISOString().split('T')[0]
+                      ? 'bg-indigo-600 text-white'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  Today
+                </button>
+                <button
+                  onClick={() => changeDateByDays(1)}
+                  className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-100"
+                >
+                  Next Day ►
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => handleDateChange(e.target.value)}
+                className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500"
+              />
+              <span className="rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-extrabold text-indigo-700 uppercase">
+                {activeDayOfWeek}
+              </span>
+            </div>
+          </div>
+
           {/* Tab Navigation */}
           <div className="border-b border-slate-200">
             <nav className="flex space-x-6 overflow-x-auto text-xs font-semibold">
@@ -412,7 +520,7 @@ export default function MessDashboardPage() {
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Today's Menu ({dashboardData?.todayMenu?.dayOfWeek || 'Today'})
+                Today's Mess Menu ({activeDayOfWeek})
               </button>
               <button
                 onClick={() => setActiveTab('weekly')}
@@ -422,7 +530,7 @@ export default function MessDashboardPage() {
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
-                Weekly Timetable
+                Menu Management &amp; Timetable
               </button>
               <button
                 onClick={() => setActiveTab('feedbacks')}
@@ -457,100 +565,144 @@ export default function MessDashboardPage() {
             </nav>
           </div>
 
-          {/* TAB 1: TODAY'S MENU */}
+          {/* TAB 1: TODAY'S MESS MENU (4 AUTOMATIC MEAL CARDS) */}
           {activeTab === 'today' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {MEALS.map((meal) => {
-                const mealMenu = dashboardData?.todayMenu?.[meal];
-                const mealTimings = {
-                  BREAKFAST: '07:30 AM – 09:30 AM',
-                  LUNCH: '12:30 PM – 02:30 PM',
-                  SNACKS: '04:30 PM – 06:00 PM',
-                  DINNER: '07:30 PM – 09:30 PM',
-                }[meal];
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-slate-900">
+                  TODAY'S MESS MENU — <span className="text-indigo-600 font-extrabold">{selectedDate} ({activeDayOfWeek})</span>
+                </h2>
+                <span className="text-xs text-slate-500">
+                  {isStudent ? 'Published menus for your allocated mess' : 'Live Resident View'}
+                </span>
+              </div>
 
-                return (
-                  <div
-                    key={meal}
-                    className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-200 transition"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                        <div>
-                          <h3 className="font-bold text-sm text-slate-900">{meal}</h3>
-                          <span className="text-[10px] text-slate-400">{mealTimings}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {MEALS.map((meal) => {
+                  const rawMenu = getMenuForMeal(meal);
+                  // For students, ONLY published menus are visible!
+                  const mealMenu = isStudent ? (rawMenu?.isPublished ? rawMenu : null) : rawMenu;
+                  
+                  const mealLabels = {
+                    BREAKFAST: 'Breakfast',
+                    LUNCH: 'Lunch',
+                    SNACKS: 'Snacks',
+                    DINNER: 'Dinner',
+                  };
+
+                  const mealTimings = {
+                    BREAKFAST: '07:30 AM – 09:30 AM',
+                    LUNCH: '12:30 PM – 02:30 PM',
+                    SNACKS: '04:30 PM – 06:00 PM',
+                    DINNER: '07:30 PM – 09:30 PM',
+                  }[meal];
+
+                  return (
+                    <div
+                      key={meal}
+                      className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-200 transition"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                          <div>
+                            <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wide">
+                              {mealLabels[meal]}
+                            </h3>
+                            <span className="text-[10px] text-slate-400">{mealTimings}</span>
+                          </div>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              mealMenu?.isPublished
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : rawMenu
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {mealMenu?.isPublished ? 'Published' : rawMenu ? 'Draft (Hidden from students)' : 'Unscheduled'}
+                          </span>
                         </div>
-                        <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                            mealMenu?.isPublished
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {mealMenu?.isPublished ? 'Published' : 'Draft / Off'}
-                        </span>
-                      </div>
 
-                      <div className="mt-3.5 space-y-2">
-                        {mealMenu?.menuItems && mealMenu.menuItems.length > 0 ? (
-                          mealMenu.menuItems.map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between text-xs py-1 border-b border-slate-50 last:border-0"
-                            >
-                              <span className="font-medium text-slate-800">{item.name}</span>
-                              <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
-                                {item.category || 'Item'}
-                              </span>
+                        <div className="mt-3.5 space-y-2">
+                          {mealMenu?.menuItems && mealMenu.menuItems.length > 0 ? (
+                            mealMenu.menuItems.map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between text-xs py-1 border-b border-slate-50 last:border-0"
+                              >
+                                <span className="font-bold text-slate-800">{item.name}</span>
+                                <span className="text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">
+                                  {item.category || 'Item'}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="py-6 text-center">
+                              <p className="text-xs text-slate-400 italic">No menu published for this meal.</p>
                             </div>
-                          ))
-                        ) : (
-                          <p className="text-xs text-slate-400 italic py-6 text-center">
-                            No menu listed for {meal.toLowerCase()}.
+                          )}
+                        </div>
+
+                        {mealMenu?.notes && (
+                          <p className="mt-3 text-[11px] text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
+                            {mealMenu.notes}
                           </p>
                         )}
                       </div>
 
-                      {mealMenu?.notes && (
-                        <p className="mt-3 text-[11px] text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
-                          {mealMenu.notes}
-                        </p>
+                      {isStudent && (
+                        <div className="mt-4 pt-3 border-t border-slate-100">
+                          {mealMenu ? (
+                            <button
+                              onClick={() => {
+                                setFeedbackMealType(meal);
+                                setFeedbackMealDate(selectedDate);
+                                setShowFeedbackModal(true);
+                              }}
+                              className="w-full rounded-lg bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition flex items-center justify-center gap-1.5 shadow-2xs"
+                            >
+                              <span>⭐</span> Rate {mealLabels[meal]}
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              className="w-full rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-400 cursor-not-allowed"
+                            >
+                              Rating Unavailable
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
-
-                    {isStudent && mealMenu && (
-                      <div className="mt-4 pt-3 border-t border-slate-100">
-                        <button
-                          onClick={() => {
-                            setFeedbackMealType(meal);
-                            setShowFeedbackModal(true);
-                          }}
-                          className="w-full rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition"
-                        >
-                          ★ Rate {meal}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
 
-          {/* TAB 2: WEEKLY TIMETABLE */}
+          {/* TAB 2: MENU MANAGEMENT & TIMETABLE */}
           {activeTab === 'weekly' && (
             <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-bold text-sm text-slate-900">7-Day Recurring Meal Schedule</h3>
-                  <p className="text-xs text-slate-500">Weekly planned menu across all meal services.</p>
+                  <h3 className="font-bold text-sm text-slate-900">7-Day Menu Schedule &amp; Management</h3>
+                  <p className="text-xs text-slate-500">View, edit drafts, and publish menus for all meal services.</p>
                 </div>
                 {canManage && (
                   <button
-                    onClick={() => setShowMenuModal(true)}
-                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700"
+                    onClick={() => {
+                      setMenuForm({
+                        dayOfWeek: activeDayOfWeek,
+                        mealType: 'BREAKFAST',
+                        itemsText: '',
+                        notes: '',
+                        isPublished: true,
+                      });
+                      setShowMenuModal(true);
+                    }}
+                    className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700"
                   >
-                    + Add Day Menu
+                    + Add Menu
                   </button>
                 )}
               </div>
@@ -602,7 +754,22 @@ export default function MessDashboardPage() {
                             </span>
                           </td>
                           {canManage && (
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-4 py-3 text-right space-x-2">
+                              <button
+                                onClick={() => {
+                                  setMenuForm({
+                                    dayOfWeek: menu.dayOfWeek,
+                                    mealType: menu.mealType,
+                                    itemsText: menu.menuItems?.map((i) => i.name).join('\n') || '',
+                                    notes: menu.notes || '',
+                                    isPublished: menu.isPublished,
+                                  });
+                                  setShowMenuModal(true);
+                                }}
+                                className="px-2.5 py-1 rounded text-[11px] font-semibold border border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                              >
+                                Edit
+                              </button>
                               <button
                                 onClick={() => handleTogglePublish(menu)}
                                 className={`px-2.5 py-1 rounded text-[11px] font-semibold border ${
@@ -697,7 +864,7 @@ export default function MessDashboardPage() {
               <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
                 <h3 className="font-bold text-sm text-slate-900 mb-1">Meal Satisfaction Breakdown</h3>
                 <p className="text-xs text-slate-500 mb-4">
-                  Deterministic metrics calculated across all authenticated student ratings.
+                  Metrics calculated across all authenticated student ratings.
                 </p>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -880,7 +1047,7 @@ export default function MessDashboardPage() {
 
             <form onSubmit={handleSubmitFeedback} className="mt-4 space-y-4 text-xs">
               <div>
-                <label className="font-semibold text-slate-700">Meal Service</label>
+                <label className="font-semibold text-slate-700">Meal Service *</label>
                 <select
                   value={feedbackMealType}
                   onChange={(e) => setFeedbackMealType(e.target.value)}
@@ -892,6 +1059,17 @@ export default function MessDashboardPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="font-semibold text-slate-700">Meal Date *</label>
+                <input
+                  type="date"
+                  value={feedbackMealDate}
+                  onChange={(e) => setFeedbackMealDate(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 p-2 font-medium"
+                  required
+                />
               </div>
 
               <div>
@@ -997,21 +1175,38 @@ export default function MessDashboardPage() {
         </div>
       )}
 
-      {/* MENU EDITOR MODAL */}
+      {/* CREATE / MANAGE MENU MODAL */}
       {showMenuModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-xs">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-base text-slate-900">Manage Meal Menu</h3>
+              <h3 className="font-bold text-base text-slate-900">Create / Edit Mess Menu</h3>
               <button onClick={() => setShowMenuModal(false)} className="text-slate-400 hover:text-slate-600">
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleSaveMenu} className="mt-4 space-y-4 text-xs">
+            <form onSubmit={(e) => handleSaveMenu(e, menuForm.isPublished)} className="mt-4 space-y-4 text-xs">
+              {messes.length > 0 && (
+                <div>
+                  <label className="font-semibold text-slate-700">Mess Facility *</label>
+                  <select
+                    value={selectedMessId}
+                    onChange={handleMessChange}
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2 font-medium"
+                  >
+                    {messes.map((m) => (
+                      <option key={m._id} value={m._id}>
+                        {m.name} ({m.code})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="font-semibold text-slate-700">Day of Week</label>
+                  <label className="font-semibold text-slate-700">Day of Week *</label>
                   <select
                     value={menuForm.dayOfWeek}
                     onChange={(e) => setMenuForm({ ...menuForm, dayOfWeek: e.target.value })}
@@ -1025,7 +1220,7 @@ export default function MessDashboardPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="font-semibold text-slate-700">Meal Type</label>
+                  <label className="font-semibold text-slate-700">Meal Type *</label>
                   <select
                     value={menuForm.mealType}
                     onChange={(e) => setMenuForm({ ...menuForm, mealType: e.target.value })}
@@ -1041,12 +1236,12 @@ export default function MessDashboardPage() {
               </div>
 
               <div>
-                <label className="font-semibold text-slate-700">Menu Items (One per line)</label>
+                <label className="font-semibold text-slate-700">Menu Items * (One per line)</label>
                 <textarea
                   rows="4"
                   value={menuForm.itemsText}
                   onChange={(e) => setMenuForm({ ...menuForm, itemsText: e.target.value })}
-                  placeholder="Dal Tadka&#10;Jeera Rice&#10;Tawa Roti&#10;Mix Veg"
+                  placeholder="Aloo Paratha&#10;Fresh Curd&#10;Masala Tea"
                   className="mt-1 w-full rounded-lg border border-slate-300 p-2 font-mono"
                   required
                 />
@@ -1058,25 +1253,12 @@ export default function MessDashboardPage() {
                   type="text"
                   value={menuForm.notes}
                   onChange={(e) => setMenuForm({ ...menuForm, notes: e.target.value })}
-                  placeholder="e.g. Sweet served on festival day"
+                  placeholder="e.g. Sweet dish served on festival day"
                   className="mt-1 w-full rounded-lg border border-slate-300 p-2"
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="publishCheck"
-                  checked={menuForm.isPublished}
-                  onChange={(e) => setMenuForm({ ...menuForm, isPublished: e.target.checked })}
-                  className="rounded text-indigo-600"
-                />
-                <label htmlFor="publishCheck" className="font-medium text-slate-700">
-                  Publish immediately (visible to residents)
-                </label>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowMenuModal(false)}
@@ -1085,11 +1267,20 @@ export default function MessDashboardPage() {
                   Cancel
                 </button>
                 <button
-                  type="submit"
+                  type="button"
                   disabled={savingMenu}
+                  onClick={(e) => handleSaveMenu(e, false)}
+                  className="rounded-lg border border-indigo-300 bg-indigo-50 px-3.5 py-2 font-bold text-indigo-700 hover:bg-indigo-100"
+                >
+                  {savingMenu ? 'Saving...' : 'Save Draft'}
+                </button>
+                <button
+                  type="button"
+                  disabled={savingMenu}
+                  onClick={(e) => handleSaveMenu(e, true)}
                   className="rounded-lg bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-700"
                 >
-                  {savingMenu ? 'Saving...' : 'Save Menu'}
+                  {savingMenu ? 'Publishing...' : 'Publish Menu'}
                 </button>
               </div>
             </form>

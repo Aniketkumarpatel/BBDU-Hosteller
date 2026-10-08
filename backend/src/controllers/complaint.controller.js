@@ -56,7 +56,12 @@ export const submitComplaint = asyncHandler(async (req, res) => {
     });
   }
 
-  const complaint = await complaintService.createStudentComplaint(req.user._id, req.body);
+  const payload = {
+    ...req.body,
+    file: req.file,
+  };
+
+  const complaint = await complaintService.createStudentComplaint(req.user._id, payload);
 
   return res.status(201).json({
     success: true,

@@ -57,8 +57,24 @@ export const DEMO_CREDENTIALS = [
   },
 ];
 
+export const OFFICIAL_HOSTELS = [
+  { name: 'BBDU A and B Block', code: 'BBDU-AB', type: 'BOYS', address: 'BBD University Campus, Lucknow' },
+  { name: 'BBDU C and D Block', code: 'BBDU-CD', type: 'BOYS', address: 'BBD University Campus, Lucknow' },
+  { name: 'Dr. Nirmala Devi Girls Hostel', code: 'NDGH', type: 'GIRLS', address: 'BBD University Campus, Lucknow' },
+  { name: 'Justice D.P. Gupta Girls Hostel', code: 'DPGGH', type: 'GIRLS', address: 'BBD University Campus, Lucknow' },
+  { name: 'Sheela Devi Girls Hostel', code: 'SDGH', type: 'GIRLS', address: 'BBD University Campus, Lucknow' },
+  { name: 'Shail Devi Girls Hostel', code: 'SHDGH', type: 'GIRLS', address: 'BBD University Campus, Lucknow' },
+  { name: 'BBDU Girls Hostel', code: 'BBDGH', type: 'GIRLS', address: 'BBD University Campus, Lucknow' },
+];
+
 export const seedDatabase = async () => {
   console.log('[seed] Starting database seed...');
+
+  // Safely rename legacy 'BBDU Devi Girls Hostel' if present
+  await Hostel.updateMany(
+    { name: 'BBDU Devi Girls Hostel' },
+    { $set: { name: 'BBDU Girls Hostel', code: 'BBDGH' } }
+  );
 
   // 1. Department
   let dept = await Department.findOne({ code: 'CSE' });
@@ -71,53 +87,79 @@ export const seedDatabase = async () => {
     console.log('[seed] Created Department: CSE');
   }
 
-  // 2. Hostel Hierarchy: Hostel -> Block -> Floor -> Room
-  let hostel = await Hostel.findOne({ code: 'BH1' });
-  if (!hostel) {
-    hostel = await Hostel.create({
-      name: 'Tagore Boys Hostel 1',
-      code: 'BH1',
-      type: 'BOYS',
-      address: 'BBD University Campus, Faizabad Road, Lucknow',
-      description: 'Undergraduate Boys Hostel',
-    });
-    console.log('[seed] Created Hostel: BH1');
-  }
+  // 2. Hostel Hierarchy: Seed all 7 required Hostels, Blocks (1, 2, 3), Floors (1, 2, 3, 4, 5), and Rooms
+  let firstHostel = null;
+  let firstBlock = null;
+  let firstFloor = null;
+  let firstRoom = null;
 
-  let block = await Block.findOne({ hostelId: hostel._id, code: 'A' });
-  if (!block) {
-    block = await Block.create({
-      hostelId: hostel._id,
-      name: 'Block A (North Wing)',
-      code: 'A',
-      description: 'Primary residential block',
-    });
-    console.log('[seed] Created Block: A');
-  }
+  for (const hData of OFFICIAL_HOSTELS) {
+    let hostel = await Hostel.findOne({ name: hData.name });
+    if (!hostel) {
+      hostel = await Hostel.findOne({ code: hData.code });
+    }
+    if (!hostel) {
+      hostel = await Hostel.create({
+        name: hData.name,
+        code: hData.code,
+        type: hData.type,
+        address: hData.address,
+        description: `${hData.name} - BBDU Residential Block`,
+      });
+      console.log(`[seed] Created Hostel: ${hostel.name}`);
+    }
 
-  let floor = await Floor.findOne({ blockId: block._id, floorNumber: 1 });
-  if (!floor) {
-    floor = await Floor.create({
-      hostelId: hostel._id,
-      blockId: block._id,
-      floorNumber: 1,
-      name: 'First Floor',
-    });
-    console.log('[seed] Created Floor: 1');
-  }
+    if (!firstHostel) firstHostel = hostel;
 
-  let room = await Room.findOne({ floorId: floor._id, roomNumber: '101' });
-  if (!room) {
-    room = await Room.create({
-      hostelId: hostel._id,
-      blockId: block._id,
-      floorId: floor._id,
-      roomNumber: '101',
-      roomType: 'DOUBLE',
-      capacity: 2,
-      currentOccupancy: 1, // Aarav Sharma resides here
-    });
-    console.log('[seed] Created Room: 101');
+    // Create Blocks 1, 2, 3
+    for (const blockNum of ['1', '2', '3']) {
+      let block = await Block.findOne({ hostelId: hostel._id, code: blockNum });
+      if (!block) {
+        block = await Block.create({
+          hostelId: hostel._id,
+          name: blockNum,
+          code: blockNum,
+          description: `Block ${blockNum}`,
+        });
+        console.log(`[seed] Created Block ${blockNum} for ${hostel.name}`);
+      }
+
+      if (firstHostel._id.equals(hostel._id) && !firstBlock) firstBlock = block;
+
+      // Create Floors 1, 2, 3, 4, 5
+      for (const floorNum of [1, 2, 3, 4, 5]) {
+        let floor = await Floor.findOne({ blockId: block._id, floorNumber: floorNum });
+        if (!floor) {
+          floor = await Floor.create({
+            hostelId: hostel._id,
+            blockId: block._id,
+            floorNumber: floorNum,
+            name: `${floorNum}`,
+          });
+          console.log(`[seed] Created Floor ${floorNum} for Block ${blockNum}, ${hostel.name}`);
+        }
+
+        if (firstBlock && firstBlock._id.equals(block._id) && !firstFloor) firstFloor = floor;
+
+        // Create Rooms: 101-105 for Floor 1, 201-205 for Floor 2, 301-305 for Floor 3
+        const roomNumbers = [1, 2, 3, 4, 5].map((idx) => `${floorNum}0${idx}`);
+        for (const rNum of roomNumbers) {
+          let room = await Room.findOne({ floorId: floor._id, roomNumber: rNum });
+          if (!room) {
+            room = await Room.create({
+              hostelId: hostel._id,
+              blockId: block._id,
+              floorId: floor._id,
+              roomNumber: rNum,
+              roomType: 'DOUBLE',
+              capacity: 2,
+              currentOccupancy: 0,
+            });
+          }
+          if (firstFloor && firstFloor._id.equals(floor._id) && !firstRoom) firstRoom = room;
+        }
+      }
+    }
   }
 
   // 3. Demo Users
@@ -137,16 +179,16 @@ export const seedDatabase = async () => {
 
       if (cred.studentId) {
         userData.studentId = cred.studentId;
-        userData.hostelId = hostel._id;
-        userData.blockId = block._id;
-        userData.floorId = floor._id;
-        userData.roomId = room._id;
+        userData.hostelId = firstHostel._id;
+        userData.blockId = firstBlock._id;
+        userData.floorId = firstFloor._id;
+        userData.roomId = firstRoom._id;
       }
 
       if (cred.employeeId) {
         userData.employeeId = cred.employeeId;
         if (cred.role === ROLES.WARDEN || cred.role === ROLES.HOSTEL_STAFF) {
-          userData.hostelId = hostel._id;
+          userData.hostelId = firstHostel._id;
         }
       }
 
@@ -252,6 +294,20 @@ export const seedDatabase = async () => {
       await EscalationRule.create(esc);
       console.log(`[seed] Created Escalation rule: ${esc.code} (Level ${esc.escalationLevel})`);
     }
+  }
+
+  // 6. Ensure all registered student accounts in local DB have valid room allocation
+  const unallocatedStudents = await User.find({
+    role: ROLES.STUDENT,
+    $or: [{ hostelId: null }, { roomId: null }],
+  });
+  for (const student of unallocatedStudents) {
+    student.hostelId = firstHostel._id;
+    student.blockId = firstBlock._id;
+    student.floorId = firstFloor._id;
+    student.roomId = firstRoom._id;
+    await student.save();
+    console.log(`[seed] Auto-allocated student: ${student.email} -> Hostel ${firstHostel.name}, Room ${firstRoom.roomNumber}`);
   }
 
   console.log('[seed] Seed completed successfully.');

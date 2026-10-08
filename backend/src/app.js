@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 
+import path from 'path';
+
 import env from './config/env.js';
 import apiRoutes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
@@ -17,6 +19,7 @@ app.use(
     frameguard: { action: 'deny' },
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     xContentTypeOptions: true,
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
 
@@ -52,6 +55,9 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // NoSQL Operator Injection Sanitizer (must run after body parsers)
 app.use(mongoSanitize);
+
+// Static file uploads
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // API routes
 app.use('/api', apiRoutes);

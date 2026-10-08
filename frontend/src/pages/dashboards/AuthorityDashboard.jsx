@@ -8,24 +8,31 @@ import ErrorState from '../../components/common/ErrorState.jsx';
 import DashboardCard from '../../components/common/DashboardCard.jsx';
 import StatusBadge from '../../components/common/StatusBadge.jsx';
 
+let authorityDashboardCache = null;
+
 export default function AuthorityDashboard() {
   const { user } = useAuth();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => authorityDashboardCache || null);
+  const [loading, setLoading] = useState(() => !authorityDashboardCache);
   const [error, setError] = useState(null);
 
   const fetchStats = async () => {
-    setLoading(true);
+    if (!authorityDashboardCache) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const res = await dashboardService.getDashboardStats();
       if (res.success) {
+        authorityDashboardCache = res.data;
         setData(res.data);
-      } else {
+      } else if (!authorityDashboardCache) {
         setError(res.message || 'Failed to load executive statistics');
       }
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Error fetching stats');
+      if (!authorityDashboardCache) {
+        setError(err?.response?.data?.message || err.message || 'Error fetching stats');
+      }
     } finally {
       setLoading(false);
     }

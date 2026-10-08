@@ -41,11 +41,28 @@ const { hashPassword } = await import('../src/utils/password.js');
 
 let server;
 let baseUrl;
+let testHostel;
+let testBlock;
+let testFloor;
+let testRoom;
 
 before(async () => {
   await connectDB(TEST_URI);
   await mongoose.connection.dropDatabase();
   await Promise.all([User, Hostel, Block, Floor, Room, Department].map((m) => m.syncIndexes()));
+
+  testHostel = await Hostel.create({ name: 'BBDU A and B Block', code: 'BBDU-AB', type: 'BOYS' });
+  testBlock = await Block.create({ hostelId: testHostel._id, name: '1', code: '1' });
+  testFloor = await Floor.create({ hostelId: testHostel._id, blockId: testBlock._id, floorNumber: 1, name: '1' });
+  testRoom = await Room.create({
+    hostelId: testHostel._id,
+    blockId: testBlock._id,
+    floorId: testFloor._id,
+    roomNumber: '101',
+    roomType: 'DOUBLE',
+    capacity: 10,
+    currentOccupancy: 0,
+  });
 
   await new Promise((resolve) => {
     server = app.listen(0, () => {
@@ -69,6 +86,10 @@ test('1. Successful student registration', async () => {
     role: 'STUDENT',
     studentId: 'BBDU2026-001',
     phone: '+919876543210',
+    hostelId: String(testHostel._id),
+    blockId: String(testBlock._id),
+    floorId: String(testFloor._id),
+    roomId: String(testRoom._id),
   };
 
   const res = await fetch(`${baseUrl}/api/auth/register`, {
@@ -91,24 +112,51 @@ test('1. Successful student registration', async () => {
   assert.equal(JSON.stringify(body).includes('Password@123'), false);
 });
 
-test('2. Duplicate email registration is rejected (409 Conflict)', async () => {
-  const payload = {
-    name: 'Duplicate Rohit',
-    email: 'ROHIT@bbdu.ac.in', // case-insensitive check
+test('2. Re-registration with same identity performs safe upsert (200 OK), wrong password rejected (409 Conflict)', async () => {
+  // Safe re-registration with correct password updates profile
+  const payloadCorrect = {
+    name: 'Rohit Updated',
+    email: 'ROHIT@bbdu.ac.in', // case-insensitive match
     password: 'Password@123',
     role: 'STUDENT',
+    hostelId: String(testHostel._id),
+    blockId: String(testBlock._id),
+    floorId: String(testFloor._id),
+    roomId: String(testRoom._id),
   };
 
-  const res = await fetch(`${baseUrl}/api/auth/register`, {
+  const resCorrect = await fetch(`${baseUrl}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(payloadCorrect),
   });
 
-  assert.equal(res.status, 409);
-  const body = await res.json();
-  assert.equal(body.success, false);
-  assert.match(body.message, /already exists/i);
+  assert.equal(resCorrect.status, 200);
+  const bodyCorrect = await resCorrect.json();
+  assert.equal(bodyCorrect.success, true);
+  assert.equal(bodyCorrect.data.user.name, 'Rohit Updated');
+
+  // Re-registration with wrong password rejected
+  const payloadWrong = {
+    name: 'Attacker Overwrite',
+    email: 'ROHIT@bbdu.ac.in',
+    password: 'WrongPassword@123',
+    role: 'STUDENT',
+    hostelId: String(testHostel._id),
+    blockId: String(testBlock._id),
+    floorId: String(testFloor._id),
+    roomId: String(testRoom._id),
+  };
+
+  const resWrong = await fetch(`${baseUrl}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payloadWrong),
+  });
+
+  assert.equal(resWrong.status, 409);
+  const bodyWrong = await resWrong.json();
+  assert.equal(bodyWrong.success, false);
 });
 
 test('3. Invalid email format is rejected (400 Bad Request)', async () => {
@@ -116,6 +164,10 @@ test('3. Invalid email format is rejected (400 Bad Request)', async () => {
     name: 'Invalid Email User',
     email: 'not-an-email',
     password: 'Password@123',
+    hostelId: String(testHostel._id),
+    blockId: String(testBlock._id),
+    floorId: String(testFloor._id),
+    roomId: String(testRoom._id),
   };
 
   const res = await fetch(`${baseUrl}/api/auth/register`, {
@@ -127,6 +179,54 @@ test('3. Invalid email format is rejected (400 Bad Request)', async () => {
   assert.equal(res.status, 400);
   const body = await res.json();
   assert.equal(body.success, false);
+});
+
+test('3b. Non-BBDU domain email is rejected with explicit error message (400 Bad Request)', async () => {
+  const invalidEmails = ['test@gmail.com', 'student@yahoo.com', 'abc@outlook.com', 'abc@bbdu.com'];
+
+  for (const email of invalidEmails) {
+    const res = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'External User',
+        email,
+        password: 'Password@123',
+        hostelId: String(testHostel._id),
+        blockId: String(testBlock._id),
+        floorId: String(testFloor._id),
+        roomId: String(testRoom._id),
+      }),
+    });
+
+    assert.equal(res.status, 400, `Email ${email} should be rejected`);
+    const body = await res.json();
+    assert.equal(body.success, false);
+    assert.match(body.message, /Please use your official BBDU email address ending with @bbdu\.ac\.in/i);
+  }
+});
+
+test('3c. Case-insensitive and padded BBDU email registration succeeds', async () => {
+  const payload = {
+    name: 'Aniket Patel',
+    email: ' APATEL08011@BBDU.AC.IN ',
+    password: 'Password@123',
+    hostelId: String(testHostel._id),
+    blockId: String(testBlock._id),
+    floorId: String(testFloor._id),
+    roomId: String(testRoom._id),
+  };
+
+  const res = await fetch(`${baseUrl}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  assert.equal(res.status, 201);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.equal(body.data.user.email, 'apatel08011@bbdu.ac.in');
 });
 
 test('4. Weak password rejected (400 Bad Request)', async () => {
@@ -416,6 +516,9 @@ test('17. Registration validates hierarchy reference exists', async () => {
       email: 'badref@bbdu.ac.in',
       password: 'Password@123',
       hostelId: String(nonExistentOid),
+      blockId: String(testBlock._id),
+      floorId: String(testFloor._id),
+      roomId: String(testRoom._id),
     }),
   });
 

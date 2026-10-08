@@ -1,8 +1,17 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { createContext, useContext } from 'react';
+import { Link, NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import NotificationBell from '../components/common/NotificationBell.jsx';
 
+export const DashboardLayoutContext = createContext(false);
+
 export default function DashboardLayout({ title, roleLabel, children }) {
+  const isNested = useContext(DashboardLayoutContext);
+
+  if (isNested) {
+    return <>{children}</>;
+  }
+
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -18,7 +27,8 @@ export default function DashboardLayout({ title, roleLabel, children }) {
   const isAdmin = user?.role === 'SUPER_ADMIN';
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
+    <DashboardLayoutContext.Provider value={true}>
+      <div className="flex min-h-screen flex-col bg-slate-50">
       <header className="border-b border-slate-200 bg-white shadow-xs">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-3.5">
           <div className="flex items-center gap-3">
@@ -685,15 +695,18 @@ export default function DashboardLayout({ title, roleLabel, children }) {
       </header>
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
-        </div>
-        {children}
+        {title && (
+          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+          </div>
+        )}
+        {children || <Outlet />}
       </main>
 
       <footer className="border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-400">
         BBDU Hosteller &bull; Smart Hostel Management &amp; Complaint Escalation Platform &bull; Step 5.2
       </footer>
     </div>
+    </DashboardLayoutContext.Provider>
   );
 }

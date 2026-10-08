@@ -14,6 +14,9 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
     return config;
   },
   (error) => Promise.reject(error)
@@ -33,9 +36,13 @@ api.interceptors.response.use(
       localStorage.removeItem('bbdu_auth_user');
     }
 
+    const detailedMessage = error.response?.data?.details?.[0]?.message;
+    const responseMessage = error.response?.data?.message;
+
     error.userMessage =
-      error.response?.data?.message ||
-      error.response?.data?.details?.[0]?.message ||
+      (responseMessage && responseMessage !== 'Validation failed' ? responseMessage : null) ||
+      detailedMessage ||
+      responseMessage ||
       error.message ||
       'Something went wrong. Please try again.';
 

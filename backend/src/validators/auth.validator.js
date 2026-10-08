@@ -18,7 +18,10 @@ export const registerSchema = z.object({
     .trim()
     .toLowerCase()
     .email('Please provide a valid email address')
-    .max(254, 'Email cannot exceed 254 characters'),
+    .max(254, 'Email cannot exceed 254 characters')
+    .refine((val) => val.trim().toLowerCase().endsWith('@bbdu.ac.in'), {
+      message: 'Please use your official BBDU email address ending with @bbdu.ac.in.',
+    }),
   password: z
     .string({ required_error: 'Password is required' })
     .min(8, 'Password must be at least 8 characters long')
@@ -45,11 +48,30 @@ export const registerSchema = z.object({
     .or(z.literal('')),
   studentId: z.string().trim().max(50).optional().or(z.literal('')),
   employeeId: z.string().trim().max(50).optional().or(z.literal('')),
-  hostelId: z.string().regex(objectIdRegex, 'Invalid hostel ID format').optional().or(z.literal('')),
-  blockId: z.string().regex(objectIdRegex, 'Invalid block ID format').optional().or(z.literal('')),
-  floorId: z.string().regex(objectIdRegex, 'Invalid floor ID format').optional().or(z.literal('')),
-  roomId: z.string().regex(objectIdRegex, 'Invalid room ID format').optional().or(z.literal('')),
+  hostelId: z.preprocess(
+    (val) => (val === undefined || val === null ? '' : String(val)),
+    z.string().trim().min(1, 'Hostel Name is required.').regex(objectIdRegex, 'Hostel Name is required.')
+  ),
+  blockId: z.preprocess(
+    (val) => (val === undefined || val === null ? '' : String(val)),
+    z.string().trim().min(1, 'Block/Wing is required.').regex(objectIdRegex, 'Block/Wing is required.')
+  ),
+  floorId: z.preprocess(
+    (val) => (val === undefined || val === null ? '' : String(val)),
+    z.string().trim().min(1, 'Floor is required.').regex(objectIdRegex, 'Floor is required.')
+  ),
+  roomNumber: z.preprocess(
+    (val) => (val !== undefined && val !== null && String(val).trim() !== '' ? String(val).trim() : undefined),
+    z.string().optional()
+  ),
+  roomId: z.preprocess(
+    (val) => (val !== undefined && val !== null && String(val).trim() !== '' ? String(val).trim() : undefined),
+    z.string().optional()
+  ),
   departmentId: z.string().regex(objectIdRegex, 'Invalid department ID format').optional().or(z.literal('')),
+}).refine((data) => Boolean(data.roomNumber || data.roomId), {
+  message: 'Room Number is required.',
+  path: ['roomNumber'],
 });
 
 export const loginSchema = z.object({

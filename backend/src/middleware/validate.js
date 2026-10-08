@@ -39,7 +39,7 @@ export const validate = (schema) => async (req, _res, next) => {
       }
     }
 
-    const message = details.length === 1 ? details[0].message : 'Validation failed';
+    const message = details.length > 0 ? details.map((d) => d.message).join('; ') : 'Validation failed';
     return next(ApiError.badRequest(message, details));
   }
   // Replace req.body with parsed/sanitized data (applies defaults and transforms)

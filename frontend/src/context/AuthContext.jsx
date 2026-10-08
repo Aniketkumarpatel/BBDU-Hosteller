@@ -52,8 +52,9 @@ export function AuthProvider({ children }) {
           localStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
         }
       } catch (err) {
-        console.warn('[auth] Session verification failed, clearing credentials:', err.message);
-        if (active) {
+        console.warn('[auth] Session verification failed:', err.message);
+        // Only wipe local session if server explicitly rejected token with 401 Unauthorized
+        if (active && (err?.response?.status === 401 || err?.userMessage?.includes('unauthorized') || err?.message?.includes('401'))) {
           localStorage.removeItem(TOKEN_KEY);
           localStorage.removeItem(USER_KEY);
           setUser(null);

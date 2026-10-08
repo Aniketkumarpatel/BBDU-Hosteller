@@ -569,7 +569,7 @@ export default function OutpassDashboardPage() {
           <div className="space-y-4">
             {/* Filter Bar */}
             <div className="flex flex-col sm:flex-row gap-3 items-center justify-between bg-white p-3 rounded-lg border border-slate-200">
-              <form onSubmit={handleSearch} className="flex gap-2 w-full sm:w-auto">
+              <form onSubmit={(e) => e.preventDefault()} className="flex gap-2 w-full sm:w-auto">
                 <input
                   type="text"
                   placeholder="Search outpass ID or destination..."

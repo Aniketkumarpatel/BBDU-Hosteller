@@ -369,6 +369,45 @@ export default function ComplaintDetailPage() {
               {complaint.description}
             </p>
           </div>
+
+          {complaint.attachmentUrl && (
+            <div className="mt-4 border-t border-slate-100 pt-4">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Attached Photo / Evidence</h3>
+              <div className="mt-2 flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <a
+                  href={complaint.attachmentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block shrink-0 group relative overflow-hidden rounded-lg border border-slate-300"
+                >
+                  <img
+                    src={complaint.attachmentUrl}
+                    alt={complaint.attachmentOriginalName || 'Complaint attachment'}
+                    className="h-32 w-32 object-cover transition transform group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-semibold">
+                    View Full Image
+                  </div>
+                </a>
+                <div className="space-y-1">
+                  <p className="text-xs font-bold text-slate-800">
+                    {complaint.attachmentOriginalName || 'Uploaded Attachment'}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    File size: {complaint.attachmentSize ? `${(complaint.attachmentSize / 1024).toFixed(1)} KB` : 'N/A'}
+                  </p>
+                  <a
+                    href={complaint.attachmentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800 pt-1"
+                  >
+                    Open original image in new tab &rarr;
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* SLA & Escalation Tracking Section */}

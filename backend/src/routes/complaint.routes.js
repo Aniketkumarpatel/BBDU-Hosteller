@@ -22,6 +22,8 @@ import {
   getComplaintEscalations,
 } from '../controllers/complaint.controller.js';
 
+import { handleComplaintUpload } from '../middleware/upload.js';
+
 const router = Router();
 
 // Metadata constants endpoint (authenticated)
@@ -31,7 +33,7 @@ router.get('/meta', requireAuth, getComplaintMeta);
 router.get('/my', requireAuth, requireRole(ROLES.STUDENT), getMyComplaints);
 
 // Student complaint creation
-router.post('/', requireAuth, requireRole(ROLES.STUDENT), submitComplaint);
+router.post('/', requireAuth, requireRole(ROLES.STUDENT), handleComplaintUpload, submitComplaint);
 
 // Operational complaints listing (Warden, Staff, Authority, Super Admin)
 router.get(

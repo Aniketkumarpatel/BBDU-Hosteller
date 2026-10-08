@@ -145,6 +145,26 @@ const complaintSchema = new mongoose.Schema(
       maxlength: [200, 'Location description cannot exceed 200 characters'],
       default: '',
     },
+    attachmentUrl: {
+      type: String,
+      default: null,
+    },
+    attachmentFilename: {
+      type: String,
+      default: null,
+    },
+    attachmentOriginalName: {
+      type: String,
+      default: null,
+    },
+    attachmentMimeType: {
+      type: String,
+      default: null,
+    },
+    attachmentSize: {
+      type: Number,
+      default: null,
+    },
     triageNote: {
       type: String,
       trim: true,

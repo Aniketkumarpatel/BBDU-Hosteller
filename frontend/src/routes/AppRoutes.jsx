@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import PublicLayout from '../layouts/PublicLayout.jsx';
+import DashboardLayout from '../layouts/DashboardLayout.jsx';
 import LandingPage from '../pages/LandingPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
@@ -83,35 +84,95 @@ export default function AppRoutes() {
 
       {/* Authenticated Routes */}
       <Route element={<ProtectedRoute />}>
-        {/* Student Portal & Complaints */}
-        <Route element={<RoleProtectedRoute allowedRoles={['STUDENT']} />}>
-          <Route path="/student/dashboard" element={<StudentDashboard />} />
-          <Route path="/student/complaints" element={<MyComplaintsPage />} />
-          <Route path="/student/complaints/new" element={<SubmitComplaintPage />} />
-          <Route path="/student/complaints/:id" element={<ComplaintDetailPage />} />
-        </Route>
+        {/* Persistent Dashboard Layout for Non-Admin Routes */}
+        <Route element={<DashboardLayout />}>
+          {/* Student Portal & Complaints */}
+          <Route element={<RoleProtectedRoute allowedRoles={['STUDENT']} />}>
+            <Route path="/student/dashboard" element={<StudentDashboard />} />
+            <Route path="/student/complaints" element={<MyComplaintsPage />} />
+            <Route path="/student/complaints/new" element={<SubmitComplaintPage />} />
+            <Route path="/student/complaints/:id" element={<ComplaintDetailPage />} />
+            <Route path="/student/mess" element={<Navigate to="/mess" replace />} />
+            <Route path="/student/outpass" element={<Navigate to="/outpass" replace />} />
+            <Route path="/student/services" element={<Navigate to="/student-services" replace />} />
+          </Route>
 
-        {/* Warden Portal & Complaints Management */}
-        <Route element={<RoleProtectedRoute allowedRoles={['WARDEN', 'SUPER_ADMIN']} />}>
-          <Route path="/warden/dashboard" element={<WardenDashboard />} />
-          <Route path="/warden/complaints" element={<WardenComplaintsPage />} />
-          <Route path="/warden/complaints/:id" element={<ComplaintManageDetailPage />} />
-          <Route path="/warden/analytics" element={<AnalyticsDashboardPage />} />
-        </Route>
+          {/* Warden Portal & Complaints Management */}
+          <Route element={<RoleProtectedRoute allowedRoles={['WARDEN', 'SUPER_ADMIN']} />}>
+            <Route path="/warden/dashboard" element={<WardenDashboard />} />
+            <Route path="/warden/complaints" element={<WardenComplaintsPage />} />
+            <Route path="/warden/complaints/:id" element={<ComplaintManageDetailPage />} />
+            <Route path="/warden/analytics" element={<AnalyticsDashboardPage />} />
+          </Route>
 
-        {/* Staff Portal & Assigned Work Queue */}
-        <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'SUPER_ADMIN']} />}>
-          <Route path="/staff/dashboard" element={<StaffDashboard />} />
-          <Route path="/staff/complaints" element={<StaffComplaintsPage />} />
-          <Route path="/staff/complaints/:id" element={<ComplaintManageDetailPage />} />
-        </Route>
+          {/* Staff Portal & Assigned Work Queue */}
+          <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'SUPER_ADMIN']} />}>
+            <Route path="/staff/dashboard" element={<StaffDashboard />} />
+            <Route path="/staff/complaints" element={<StaffComplaintsPage />} />
+            <Route path="/staff/complaints/:id" element={<ComplaintManageDetailPage />} />
+          </Route>
 
-        {/* Authority Portal & Campus Complaints Oversight */}
-        <Route element={<RoleProtectedRoute allowedRoles={['AUTHORITY', 'SUPER_ADMIN']} />}>
-          <Route path="/authority/dashboard" element={<AuthorityDashboard />} />
-          <Route path="/authority/complaints" element={<AuthorityComplaintsPage />} />
-          <Route path="/authority/complaints/:id" element={<ComplaintManageDetailPage />} />
-          <Route path="/authority/analytics" element={<AnalyticsDashboardPage />} />
+          {/* Authority Portal & Campus Complaints Oversight */}
+          <Route element={<RoleProtectedRoute allowedRoles={['AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/authority/dashboard" element={<AuthorityDashboard />} />
+            <Route path="/authority/complaints" element={<AuthorityComplaintsPage />} />
+            <Route path="/authority/complaints/:id" element={<ComplaintManageDetailPage />} />
+            <Route path="/authority/analytics" element={<AnalyticsDashboardPage />} />
+          </Route>
+
+          {/* Work Orders Management (Step 8) */}
+          <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/work-orders" element={<WorkOrderListPage />} />
+            <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />
+          </Route>
+
+          {/* Asset Inventory & Lifecycle (Step 8 & 14) */}
+          <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/assets" element={<AssetManagementPage />} />
+            <Route path="/assets/:id" element={<AssetDetailPage />} />
+            <Route path="/inventory" element={<Navigate to="/assets" replace />} />
+          </Route>
+
+          {/* Preventive Maintenance & Smart Scheduling (Step 9) */}
+          <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/maintenance" element={<MaintenanceDashboardPage />} />
+            <Route path="/maintenance/plans/:id" element={<MaintenancePlanDetailPage />} />
+          </Route>
+
+          {/* Mess & Food Quality Management (Step 10) */}
+          <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/mess" element={<MessDashboardPage />} />
+          </Route>
+
+          {/* Cleaning & Housekeeping Management (Step 11) */}
+          <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/cleaning" element={<CleaningDashboardPage />} />
+          </Route>
+
+          {/* Visitor & Outpass Management (Step 12) */}
+          <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/outpass" element={<OutpassDashboardPage />} />
+          </Route>
+
+          {/* AI Hostel Command Center & Smart Operations (Step 13) */}
+          <Route element={<RoleProtectedRoute allowedRoles={['WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/ai-command-center" element={<AiCommandCenterPage />} />
+          </Route>
+
+          {/* Hostel Finance & Expense Management (Step 15) */}
+          <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/finance" element={<FinanceDashboardPage />} />
+            <Route path="/finance/expenses/:id" element={<ExpenseDetailPage />} />
+            <Route path="/expenses" element={<Navigate to="/finance" replace />} />
+            <Route path="/budgets" element={<Navigate to="/finance" replace />} />
+          </Route>
+
+          {/* Student Services & Digital Communication (Step 16) */}
+          <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/student-services" element={<StudentServicesDashboardPage />} />
+            <Route path="/student-services/requests/:id" element={<ServiceRequestDetailPage />} />
+            <Route path="/notices" element={<Navigate to="/student-services" replace />} />
+          </Route>
         </Route>
 
         {/* Super Admin Console (Nested inside AdminLayout) */}
@@ -130,60 +191,6 @@ export default function AppRoutes() {
             <Route path="/admin/sla-config" element={<AdminSlaConfigPage />} />
             <Route path="/admin/profile" element={<AdminProfilePage />} />
           </Route>
-        </Route>
-
-        {/* Work Orders Management (Step 8) */}
-        <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-          <Route path="/work-orders" element={<WorkOrderListPage />} />
-          <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />
-        </Route>
-
-        {/* Asset Inventory & Lifecycle (Step 8 & 14) */}
-        <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-          <Route path="/assets" element={<AssetManagementPage />} />
-          <Route path="/assets/:id" element={<AssetDetailPage />} />
-          <Route path="/inventory" element={<Navigate to="/assets" replace />} />
-        </Route>
-
-        {/* Preventive Maintenance & Smart Scheduling (Step 9) */}
-        <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-          <Route path="/maintenance" element={<MaintenanceDashboardPage />} />
-          <Route path="/maintenance/plans/:id" element={<MaintenancePlanDetailPage />} />
-        </Route>
-
-        {/* Mess & Food Quality Management (Step 10) */}
-        <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-          <Route path="/mess" element={<MessDashboardPage />} />
-        </Route>
-
-        {/* Cleaning & Housekeeping Management (Step 11) */}
-        <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-          <Route path="/cleaning" element={<CleaningDashboardPage />} />
-        </Route>
-
-        {/* Visitor & Outpass Management (Step 12) */}
-        <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-          <Route path="/outpass" element={<OutpassDashboardPage />} />
-        </Route>
-
-        {/* AI Hostel Command Center & Smart Operations (Step 13) */}
-        <Route element={<RoleProtectedRoute allowedRoles={['WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-          <Route path="/ai-command-center" element={<AiCommandCenterPage />} />
-        </Route>
-
-        {/* Hostel Finance & Expense Management (Step 15) */}
-        <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-          <Route path="/finance" element={<FinanceDashboardPage />} />
-          <Route path="/finance/expenses/:id" element={<ExpenseDetailPage />} />
-          <Route path="/expenses" element={<Navigate to="/finance" replace />} />
-          <Route path="/budgets" element={<Navigate to="/finance" replace />} />
-        </Route>
-
-        {/* Student Services & Digital Communication (Step 16) */}
-        <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-          <Route path="/student-services" element={<StudentServicesDashboardPage />} />
-          <Route path="/student-services/requests/:id" element={<ServiceRequestDetailPage />} />
-          <Route path="/notices" element={<Navigate to="/student-services" replace />} />
         </Route>
       </Route>
 

@@ -714,3 +714,101 @@ test('28. Closed complaint cannot be modified or re-resolved', async () => {
   assert.match(body.message, /Cannot resolve complaint in.*status/i);
 });
 
+test('29. Student submits complaint WITH JPG attachment (multipart/form-data)', async () => {
+  const formData = new FormData();
+  formData.append('title', 'Leaking bathroom pipe attachment test');
+  formData.append('description', 'Water leaking heavily from under sink pipe');
+  formData.append('category', 'PLUMBING');
+  formData.append('issueType', 'WATER_LEAKAGE');
+  formData.append('priority', 'HIGH');
+
+  const fakeJpg = new Blob(['fake jpg binary content data'], { type: 'image/jpeg' });
+  formData.append('attachment', fakeJpg, 'bathroom_leak.jpg');
+
+  const res = await fetch(`${baseUrl}/api/complaints`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${student1Token}` },
+    body: formData,
+  });
+
+  const body = await res.json();
+  assert.equal(res.status, 201);
+  assert.equal(body.success, true);
+  assert.ok(body.data.attachmentUrl);
+  assert.equal(body.data.attachmentOriginalName, 'bathroom_leak.jpg');
+  assert.equal(body.data.attachmentMimeType, 'image/jpeg');
+});
+
+test('30. Student submits complaint WITH PNG attachment', async () => {
+  const formData = new FormData();
+  formData.append('title', 'Damaged study chair leg photo');
+  formData.append('description', 'Study chair leg is completely cracked and unstable');
+  formData.append('category', 'FURNITURE');
+  formData.append('issueType', 'STUDY_TABLE_CHAIR');
+  formData.append('priority', 'MEDIUM');
+
+  const fakePng = new Blob(['fake png content'], { type: 'image/png' });
+  formData.append('attachment', fakePng, 'broken_chair.png');
+
+  const res = await fetch(`${baseUrl}/api/complaints`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${student1Token}` },
+    body: formData,
+  });
+
+  const body = await res.json();
+  assert.equal(res.status, 201);
+  assert.equal(body.success, true);
+  assert.ok(body.data.attachmentUrl);
+  assert.equal(body.data.attachmentOriginalName, 'broken_chair.png');
+  assert.equal(body.data.attachmentMimeType, 'image/png');
+});
+
+test('31. Unsupported file attachment (PDF) is rejected with clear error', async () => {
+  const formData = new FormData();
+  formData.append('title', 'PDF document test');
+  formData.append('description', 'Attempting to attach a pdf document');
+  formData.append('category', 'OTHER');
+  formData.append('issueType', 'OTHER');
+  formData.append('priority', 'LOW');
+
+  const fakePdf = new Blob(['fake pdf content'], { type: 'application/pdf' });
+  formData.append('attachment', fakePdf, 'document.pdf');
+
+  const res = await fetch(`${baseUrl}/api/complaints`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${student1Token}` },
+    body: formData,
+  });
+
+  const body = await res.json();
+  assert.equal(res.status, 400);
+  assert.equal(body.success, false);
+  assert.match(body.message, /JPG, JPEG, PNG, or WEBP/i);
+});
+
+test('32. Oversized image attachment (>5MB) is rejected with clear error', async () => {
+  const formData = new FormData();
+  formData.append('title', 'Oversized photo test');
+  formData.append('description', 'Attempting to upload 6MB file');
+  formData.append('category', 'OTHER');
+  formData.append('issueType', 'OTHER');
+  formData.append('priority', 'LOW');
+
+  // 6MB buffer
+  const largeBuf = new Uint8Array(6 * 1024 * 1024);
+  const fakeLargeFile = new Blob([largeBuf], { type: 'image/jpeg' });
+  formData.append('attachment', fakeLargeFile, 'giant_photo.jpg');
+
+  const res = await fetch(`${baseUrl}/api/complaints`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${student1Token}` },
+    body: formData,
+  });
+
+  const body = await res.json();
+  assert.equal(res.status, 400);
+  assert.equal(body.success, false);
+  assert.match(body.message, /too large/i);
+});
+

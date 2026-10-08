@@ -89,7 +89,57 @@ export const createMess = async (data, user) => {
   return mess;
 };
 
+export const ensureMessSeeded = async () => {
+  try {
+    const count = await Mess.countDocuments();
+    if (count > 0) return;
+
+    const hostels = await Hostel.find().lean();
+    if (!hostels || hostels.length === 0) return;
+
+    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const sampleMenus = {
+      BREAKFAST: ['Aloo Paratha', 'Curd', 'Pickle', 'Tea/Coffee', 'Sprouts'],
+      LUNCH: ['Paneer Butter Masala', 'Dal Tadka', 'Jeera Rice', 'Roti', 'Salad', 'Gulab Jamun'],
+      SNACKS: ['Samosa', 'Mint Chutney', 'Tea/Coffee', 'Biscuits'],
+      DINNER: ['Mix Veg', 'Dal Fry', 'Steamed Rice', 'Chapati', 'Kheer'],
+    };
+
+    for (const hostel of hostels) {
+      const code = (hostel.code || hostel.name.substring(0, 3)).toUpperCase() + '-MESS-' + Math.floor(Math.random() * 1000);
+      const messId = await generateMessId();
+      const mess = await Mess.create({
+        messId,
+        name: `${hostel.name} Mess`,
+        code,
+        hostelId: hostel._id,
+        description: `Central Dining & Mess Facility for ${hostel.name}`,
+        capacity: 300,
+        isActive: true,
+      });
+
+      for (const day of days) {
+        for (const mealType of ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER']) {
+          const menuId = await generateMenuId();
+          await MessMenu.create({
+            menuId,
+            messId: mess._id,
+            dayOfWeek: day,
+            mealType,
+            menuItems: sampleMenus[mealType],
+            notes: `Freshly prepared ${mealType.toLowerCase()} items for ${day}`,
+            isPublished: true,
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[messService] Auto seed error:', err.message);
+  }
+};
+
 export const getMesses = async (query = {}) => {
+  await ensureMessSeeded();
   const filter = {};
 
   if (query.hostelId && mongoose.isValidObjectId(query.hostelId)) {
@@ -234,6 +284,7 @@ export const getMenus = async (messId, query = {}, user = null) => {
 };
 
 export const getTodayMenu = async (messId, user = null) => {
+  await ensureMessSeeded();
   const mess = await Mess.findById(messId).lean();
   if (!mess) {
     throw new ApiError(404, 'Mess not found');
@@ -343,7 +394,12 @@ export const submitFeedback = async (data, studentUser) => {
     throw new ApiError(403, 'Only students can submit meal feedback');
   }
 
-  const { messId, mealType, mealDate, rating, foodQuality, taste, hygiene, quantity, comments } = data;
+  let { messId, mealType, mealDate, rating, foodQuality, taste, hygiene, quantity, comments } = data;
+
+  if (!messId && studentUser.hostelId) {
+    const studentMess = await Mess.findOne({ hostelId: studentUser.hostelId });
+    if (studentMess) messId = studentMess._id;
+  }
 
   if (!messId || !mealType || !mealDate || rating === undefined || !foodQuality) {
     throw new ApiError(400, 'messId, mealType, mealDate, rating (1-5), and foodQuality are required');
@@ -639,6 +695,7 @@ export const toggleNoticeActive = async (noticeId, isActive, user) => {
 // ==========================================
 
 export const getMessDashboard = async (user, query = {}) => {
+  await ensureMessSeeded();
   let targetMessId = query.messId;
 
   // Resolve mess context if not provided

@@ -27,6 +27,7 @@ export const sanitizeUser = (user) => {
     blockId: raw.blockId || undefined,
     floorId: raw.floorId || undefined,
     roomId: raw.roomId || undefined,
+    roomNumber: raw.roomNumber || (raw.roomId && typeof raw.roomId === 'object' ? raw.roomId.roomNumber : undefined),
     departmentId: raw.departmentId || undefined,
     isActive: Boolean(raw.isActive),
     createdAt: raw.createdAt,

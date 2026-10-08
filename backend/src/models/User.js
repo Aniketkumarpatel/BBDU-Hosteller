@@ -42,6 +42,7 @@ const userSchema = new mongoose.Schema(
     blockId: objectId('Block'),
     floorId: objectId('Floor'),
     roomId: objectId('Room'),
+    roomNumber: { type: String, trim: true },
     departmentId: objectId('Department'),
     isActive: { type: Boolean, default: true },
   },

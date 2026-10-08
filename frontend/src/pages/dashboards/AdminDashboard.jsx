@@ -5,23 +5,30 @@ import LoadingSpinner from '../../components/common/LoadingSpinner.jsx';
 import ErrorState from '../../components/common/ErrorState.jsx';
 import DashboardCard from '../../components/common/DashboardCard.jsx';
 
+let adminDashboardCache = null;
+
 export default function AdminDashboard() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => adminDashboardCache || null);
+  const [loading, setLoading] = useState(() => !adminDashboardCache);
   const [error, setError] = useState(null);
 
   const fetchStats = async () => {
-    setLoading(true);
+    if (!adminDashboardCache) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const res = await dashboardService.getDashboardStats();
       if (res.success) {
+        adminDashboardCache = res.data;
         setData(res.data);
-      } else {
+      } else if (!adminDashboardCache) {
         setError(res.message || 'Failed to load admin stats');
       }
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Error fetching stats');
+      if (!adminDashboardCache) {
+        setError(err?.response?.data?.message || err.message || 'Error fetching stats');
+      }
     } finally {
       setLoading(false);
     }

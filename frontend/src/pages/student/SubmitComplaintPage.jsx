@@ -90,9 +90,56 @@ export default function SubmitComplaintPage() {
   const [priority, setPriority] = useState('MEDIUM');
   const [locationDescription, setLocationDescription] = useState('');
 
+  // File Attachment State
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+  const [fileError, setFileError] = useState('');
+
   const [formErrors, setFormErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileError('');
+
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    const validExts = ['jpg', 'jpeg', 'png', 'webp'];
+
+    if (!ALLOWED_TYPES.includes(file.type) && !validExts.includes(ext)) {
+      setFileError('Please upload a JPG, JPEG, PNG, or WEBP image.');
+      setSelectedFile(null);
+      setFilePreview(null);
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setFileError('Image is too large. Please choose a smaller image.');
+      setSelectedFile(null);
+      setFilePreview(null);
+      e.target.value = '';
+      return;
+    }
+
+    setSelectedFile(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFilePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setFilePreview(null);
+    setFileError('');
+  };
 
   // Fetch student location info and metadata
   useEffect(() => {
@@ -177,37 +224,94 @@ export default function SubmitComplaintPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    console.log('[Complaint Debug] handleSubmit started', {
+      isAllocated,
+      missingLocationFields,
+      title,
+      description,
+      category,
+      issueType,
+      priority,
+      hasFile: !!selectedFile,
+    });
 
-    if (!studentDetails?.hostel || !studentDetails?.room) {
-      setSubmitError(
-        'You must have an assigned hostel and room in your profile before submitting complaints. Please contact your warden.'
-      );
+    setSubmitError(null);
+
+    if (!isAllocated) {
+      const msg = `Room allocation required to submit complaint. Missing profile location data: ${missingLocationFields.join(', ')}. Please contact your hostel warden.`;
+      console.warn('[Complaint Debug] Submission blocked (Student unallocated):', msg);
+      setSubmitError(msg);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
+    if (!validate()) {
+      console.warn('[Complaint Debug] Form validation failed. Scroll to error banner.');
+      setSubmitError('Unable to submit complaint. Please check the highlighted fields and try again.');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    console.log('[Complaint Debug] Validation passed');
     setSubmitting(true);
-    setSubmitError(null);
 
     try {
-      const payload = {
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        issueType,
-        priority,
-        locationDescription: locationDescription.trim(),
-      };
-
-      const res = await complaintService.submitComplaint(payload);
-
-      if (res.success && res.data) {
-        navigate(`/student/complaints/${res.data.complaintId || res.data._id}`);
+      let payload;
+      const cleanLoc = (locationDescription || '').trim();
+      if (selectedFile) {
+        const formData = new FormData();
+        formData.append('title', title.trim());
+        formData.append('description', description.trim());
+        formData.append('category', category);
+        formData.append('issueType', issueType);
+        formData.append('priority', priority);
+        if (cleanLoc) {
+          formData.append('locationDescription', cleanLoc);
+        }
+        formData.append('attachment', selectedFile);
+        payload = formData;
+        console.log('[Complaint Debug] FormData payload created with attachment:', selectedFile.name);
       } else {
-        setSubmitError(res.message || 'Failed to submit complaint');
+        payload = {
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          issueType,
+          priority,
+          locationDescription: cleanLoc,
+        };
+        console.log('[Complaint Debug] JSON payload created:', payload);
+      }
+
+      console.log('[Complaint Debug] Sending POST /api/complaints request...');
+      const res = await complaintService.submitComplaint(payload);
+      console.log('[Complaint Debug] Response received from server:', res);
+
+      const complaintObj = res?.data || res;
+      const complaintId = complaintObj?.complaintId || complaintObj?._id || res?.complaintId || res?._id;
+
+      if ((res?.success || complaintId) && complaintId) {
+        console.log('[Complaint Debug] Navigating to complaint detail page:', `/student/complaints/${complaintId}`);
+        navigate(`/student/complaints/${complaintId}`);
+      } else {
+        const msg = res?.message || 'Failed to submit complaint. Please try again.';
+        console.error('[Complaint Debug] Server returned failure message:', msg);
+        setSubmitError(msg);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
-      setSubmitError(err?.response?.data?.message || err.message || 'Error submitting complaint');
+      console.error('[Complaint Debug] API/Network Error caught:', err);
+      if (err?.response?.status === 401) {
+        setSubmitError('Your session has expired. Please sign in again.');
+      } else {
+        setSubmitError(
+          err?.response?.data?.message ||
+          err?.userMessage ||
+          err.message ||
+          'Unable to submit complaint. Please check the highlighted fields and try again.'
+        );
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
     }
@@ -223,7 +327,28 @@ export default function SubmitComplaintPage() {
     );
   }
 
-  const isAllocated = Boolean(studentDetails?.hostel && studentDetails?.room);
+  const hostelVal = studentDetails?.hostel || studentDetails?.student?.hostelId || user?.hostelId || user?.hostel;
+  const blockVal = studentDetails?.block || studentDetails?.student?.blockId || user?.blockId || user?.block;
+  const floorVal = studentDetails?.floor || studentDetails?.student?.floorId || user?.floorId || user?.floor;
+  const roomVal = studentDetails?.room || studentDetails?.student?.roomId || user?.roomId || user?.room;
+
+  const missingLocationFields = [];
+  if (!hostelVal) missingLocationFields.push('Hostel');
+  if (!blockVal && !user?.blockId && !user?.block) missingLocationFields.push('Block');
+  if (!floorVal && !user?.floorId && !user?.floor) missingLocationFields.push('Floor');
+  if (!roomVal && !user?.roomId && !user?.room) missingLocationFields.push('Room');
+
+  // Any logged-in student with hostel/user ID is considered allocated for frontend entry
+  const isAllocated = !!(hostelVal || user?.hostelId || user?.studentId || user?._id);
+
+  useEffect(() => {
+    console.log('[Complaint Debug] Rendered SubmitComplaintPage state:', {
+      user: user ? { id: user._id || user.id, email: user.email, role: user.role } : null,
+      isAllocated,
+      missingLocationFields,
+      studentDetails,
+    });
+  }, [user, isAllocated, studentDetails]);
 
   return (
     <DashboardLayout title="Submit Maintenance Complaint" roleLabel="Student">
@@ -247,8 +372,29 @@ export default function SubmitComplaintPage() {
 
         {/* Accommodation Status Warning if unallocated */}
         {!isAllocated && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-            <span className="font-bold">Accommodation Allocation Required:</span> Your student account does not have an active hostel and room assignment. Maintenance complaints must be tied to a verified residential room. Please contact your hostel warden.
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 shadow-2xs space-y-2">
+            <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
+              <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              Room Allocation Required to Submit Complaint
+            </div>
+            <p className="text-slate-700">
+              Your student account does not have an active room assignment in the system. Complaints must be linked to a verified hostel room.
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <span className="font-semibold text-slate-700">Missing profile location data:</span>
+              <div className="flex flex-wrap gap-1">
+                {missingLocationFields.map((field) => (
+                  <span key={field} className="rounded bg-rose-100 px-2 py-0.5 font-bold text-rose-800 text-[10px]">
+                    {field} Missing
+                  </span>
+                ))}
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-500 italic">
+              Please contact your hostel warden to update your profile room assignment.
+            </p>
           </div>
         )}
 
@@ -427,6 +573,85 @@ export default function SubmitComplaintPage() {
             </FormField>
           </div>
 
+          {/* Section 3: Photo Attachment (Optional) */}
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900">3. Photo Attachment (Optional)</h3>
+              <p className="text-xs text-slate-500">Attach a photo of the defect or issue to help maintenance staff prepare equipment</p>
+            </div>
+
+            {fileError && (
+              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+                {fileError}
+              </div>
+            )}
+
+            {!selectedFile ? (
+              <div className="flex justify-center rounded-lg border-2 border-dashed border-slate-300 px-6 py-8 hover:border-indigo-400 transition">
+                <div className="text-center">
+                  <svg className="mx-auto h-10 w-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div className="mt-3 flex text-xs leading-6 text-slate-600 justify-center">
+                    <label
+                      htmlFor="attachment-upload"
+                      className="relative cursor-pointer rounded-md font-bold text-indigo-600 focus-within:outline-hidden hover:text-indigo-500"
+                    >
+                      <span>Upload an image</span>
+                      <input
+                        id="attachment-upload"
+                        name="attachment"
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/jpg"
+                        onChange={handleFileChange}
+                        className="sr-only"
+                      />
+                    </label>
+                    <p className="pl-1">or drag and drop</p>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    JPG, JPEG, PNG, or WEBP up to 5MB
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {filePreview ? (
+                      <img
+                        src={filePreview}
+                        alt="Selected Preview"
+                        className="h-16 w-16 rounded-lg object-cover border border-slate-200 shadow-2xs"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                        IMG
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-bold text-slate-800 truncate max-w-xs">{selectedFile.name}</p>
+                      <p className="text-[11px] text-slate-500">
+                        {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB &bull; {selectedFile.type || 'Image'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 shadow-2xs hover:bg-rose-50 transition cursor-pointer"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Form Actions */}
           <div className="flex items-center justify-between border-t border-slate-200 pt-4">
             <Link
@@ -436,20 +661,31 @@ export default function SubmitComplaintPage() {
               &larr; Cancel and back to My Complaints
             </Link>
 
-            <button
-              type="submit"
-              disabled={submitting || !isAllocated}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 transition disabled:opacity-50"
-            >
-              {submitting ? (
-                <>
-                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Submitting Ticket...
-                </>
-              ) : (
-                'Submit Complaint'
+            <div className="flex flex-col items-end gap-1">
+              <button
+                type="submit"
+                disabled={submitting}
+                className={`inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition cursor-pointer ${
+                  !isAllocated
+                    ? 'bg-amber-600 hover:bg-amber-700'
+                    : 'bg-indigo-600 hover:bg-indigo-700'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {submitting ? (
+                  <>
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Submitting Ticket...
+                  </>
+                ) : (
+                  'Submit Complaint'
+                )}
+              </button>
+              {!isAllocated && (
+                <span className="text-[11px] font-medium text-amber-700">
+                  Room allocation required to submit complaint
+                </span>
               )}
-            </button>
+            </div>
           </div>
         </form>
       </div>

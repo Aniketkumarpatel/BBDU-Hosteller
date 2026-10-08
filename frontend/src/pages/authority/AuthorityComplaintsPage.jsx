@@ -162,7 +162,7 @@ export default function AuthorityComplaintsPage() {
 
         {/* Filters and Search Bar */}
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-6">
+          <form onSubmit={(e) => e.preventDefault()} className="grid grid-cols-1 gap-3 sm:grid-cols-6">
             <div>
               <input
                 type="text"
