@@ -15,10 +15,14 @@ import {
  * 3. Finds user by decoded userId
  * 4. Checks user exists
  * 5. Checks user isActive
- * 6. Attaches safe user object to req.user
- * 7. Rejects invalid / expired tokens with 401 Unauthorized
+ * 6. Rejects tokens issued before the user's last password change (session revocation)
+ * 7. Rejects every route except the allow-listed ones while a password change is
+ *    pending (`mustChangePassword`), enforced here so it cannot be bypassed by
+ *    calling the API directly
+ * 8. Attaches safe user object to req.user
+ * 9. Rejects invalid / expired tokens with 401 Unauthorized
  */
-export const requireAuth = async (req, _res, next) => {
+const buildAuthenticator = (allowPendingPasswordChange) => async (req, _res, next) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -50,6 +54,24 @@ export const requireAuth = async (req, _res, next) => {
       throw ApiError.forbidden('Your account is deactivated. Access denied.');
     }
 
+    // JWT `iat` has one-second precision, so compare whole seconds. A token issued in
+    // the same second as the password change (e.g. the fresh one returned by
+    // change-password) is accepted; anything issued earlier is revoked.
+    if (user.passwordChangedAt) {
+      const changedAtSeconds = Math.floor(user.passwordChangedAt.getTime() / 1000);
+      if (!decoded.iat || decoded.iat < changedAtSeconds) {
+        throw ApiError.unauthorized('Your password was changed. Please log in again.');
+      }
+    }
+
+    if (user.mustChangePassword && !allowPendingPasswordChange) {
+      throw new ApiError(
+        403,
+        'You must change your temporary password before using the system.',
+        { code: 'PASSWORD_CHANGE_REQUIRED' }
+      );
+    }
+
     req.user = user;
     req.tokenPayload = decoded;
     next();
@@ -57,6 +79,14 @@ export const requireAuth = async (req, _res, next) => {
     next(err);
   }
 };
+
+export const requireAuth = buildAuthenticator(false);
+
+/**
+ * Same as requireAuth, but also lets a user with a pending forced password change
+ * through. Use ONLY on /auth/me and /auth/change-password.
+ */
+export const requireAuthAllowPasswordChange = buildAuthenticator(true);
 
 /**
  * Middleware: requireRole(...allowedRoles)

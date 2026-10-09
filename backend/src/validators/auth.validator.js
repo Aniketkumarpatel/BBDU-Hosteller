@@ -7,6 +7,31 @@ const PUBLIC_ALLOWED_ROLES = [ROLES.STUDENT];
 
 const objectIdRegex = /^[0-9a-fA-F]{24}$/;
 
+/**
+ * Single password policy used by registration, change-password, reset and the admin
+ * user form, so no entry point can accept a weaker password than the others.
+ */
+export const passwordPolicySchema = z
+  .string({ required_error: 'Password is required' })
+  .min(8, 'Password must be at least 8 characters long')
+  .max(128, 'Password cannot exceed 128 characters')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number');
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z
+      .string({ required_error: 'Current password is required' })
+      .min(1, 'Current password is required')
+      .max(128, 'Current password cannot exceed 128 characters'),
+    newPassword: passwordPolicySchema,
+  })
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    message: 'New password must be different from the current password',
+    path: ['newPassword'],
+  });
+
 export const registerSchema = z.object({
   name: z
     .string({ required_error: 'Name is required' })
@@ -22,13 +47,7 @@ export const registerSchema = z.object({
     .refine((val) => val.trim().toLowerCase().endsWith('@bbdu.ac.in'), {
       message: 'Please use your official BBDU email address ending with @bbdu.ac.in.',
     }),
-  password: z
-    .string({ required_error: 'Password is required' })
-    .min(8, 'Password must be at least 8 characters long')
-    .max(128, 'Password cannot exceed 128 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
+  password: passwordPolicySchema,
   role: z
     .enum(ROLE_VALUES, {
       errorMap: () => ({ message: `Role must be one of: ${ROLE_VALUES.join(', ')}` }),

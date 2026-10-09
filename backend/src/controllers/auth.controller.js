@@ -30,6 +30,43 @@ export const login = asyncHandler(async (req, res) => {
 });
 
 /**
+ * POST /api/auth/change-password
+ * Self-service change. Returns a fresh token because older tokens are revoked.
+ */
+export const changePassword = asyncHandler(async (req, res) => {
+  const result = await authService.changePassword(req.user._id, req.body, req);
+  res.status(200).json({
+    success: true,
+    message: 'Password changed successfully',
+    data: result,
+  });
+});
+
+/**
+ * POST /api/auth/users/:id/reset-password
+ * SUPER_ADMIN (any user) or WARDEN (student and staff of own hostel).
+ * The temporary password is returned once and must never be cached.
+ */
+export const resetPassword = asyncHandler(async (req, res) => {
+  const result = await authService.resetUserPassword(req.user, req.params.id, req);
+  res.set('Cache-Control', 'no-store');
+  res.status(200).json({
+    success: true,
+    message: 'Password reset. Share the temporary password securely; it is shown only once.',
+    data: result,
+  });
+});
+
+/**
+ * GET /api/auth/hostel-users?search=&role=
+ * WARDEN only: students and staff of the warden's own hostel (for password resets).
+ */
+export const listHostelUsers = asyncHandler(async (req, res) => {
+  const result = await authService.listHostelUsers(req.user, req.query);
+  res.status(200).json({ success: true, data: result });
+});
+
+/**
  * GET /api/auth/me
  */
 export const getMe = asyncHandler(async (req, res) => {

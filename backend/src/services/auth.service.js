@@ -8,6 +8,7 @@ import Department from '../models/Department.js';
 import ApiError from '../utils/ApiError.js';
 import { hashPassword, comparePassword } from '../utils/password.js';
 import { signToken } from '../utils/jwt.js';
+import { generateTemporaryPassword } from '../utils/temporaryPassword.js';
 import { sanitizeUser } from '../utils/userSerializer.js';
 import { logSecurityEvent } from './securityAudit.service.js';
 import {
@@ -404,4 +405,180 @@ export const getUserProfile = async (userId) => {
   }
 
   return sanitizeUser(user);
+};
+
+/**
+ * Self-service password change (DEC-022).
+ * Verifies the current password, stores the new hash, clears any forced-change
+ * flag and stamps `passwordChangedAt` so every older token is revoked. Returns a
+ * fresh token because the caller's own previous token is revoked too.
+ *
+ * A wrong current password is a 400, not a 401: the frontend treats 401 as
+ * "session expired" and would otherwise log the user out for a typo.
+ */
+export const changePassword = async (userId, { currentPassword, newPassword }, req = null) => {
+  const user = await User.findById(userId).select('+passwordHash');
+  if (!user || !user.isActive) {
+    throw ApiError.unauthorized('Account not found or inactive.');
+  }
+
+  const currentIsValid = await comparePassword(currentPassword, user.passwordHash);
+  if (!currentIsValid) {
+    await logSecurityEvent({
+      eventType: SECURITY_EVENT_TYPES.FAILED_LOGIN,
+      severity: SECURITY_SEVERITIES.MEDIUM,
+      actorId: user._id,
+      actorRole: user.role,
+      actorEmail: user.email,
+      hostelId: user.hostelId,
+      req,
+      details: { reason: 'Incorrect current password on change-password' },
+    });
+    throw ApiError.badRequest('Current password is incorrect.');
+  }
+
+  if (await comparePassword(newPassword, user.passwordHash)) {
+    throw ApiError.badRequest('New password must be different from the current password.');
+  }
+
+  user.passwordHash = await hashPassword(newPassword);
+  user.passwordChangedAt = new Date();
+  user.mustChangePassword = false;
+  await user.save();
+
+  await logSecurityEvent({
+    eventType: SECURITY_EVENT_TYPES.PASSWORD_CHANGED,
+    severity: SECURITY_SEVERITIES.LOW,
+    actorId: user._id,
+    actorRole: user.role,
+    actorEmail: user.email,
+    targetEntity: 'User',
+    targetEntityId: user._id,
+    hostelId: user.hostelId,
+    req,
+    details: { reason: 'Self-service password change' },
+  });
+
+  return {
+    user: sanitizeUser(user),
+    token: signToken({ userId: user._id, role: user.role }),
+  };
+};
+
+// Roles a WARDEN may reset, and only inside the warden's own hostel (DEC-022)
+const WARDEN_RESETTABLE_ROLES = [ROLES.STUDENT, ROLES.HOSTEL_STAFF];
+
+/**
+ * Admin or warden initiated password reset (DEC-022).
+ *
+ * - SUPER_ADMIN may reset any other account.
+ * - WARDEN may reset STUDENT and HOSTEL_STAFF accounts of their own hostel only.
+ * - Nobody resets their own password here (use changePassword).
+ *
+ * A random temporary password is generated, the target is forced to change it on
+ * next login, and all of the target's existing sessions are revoked. The temporary
+ * password is returned to the caller exactly once and is never written to the audit
+ * log or the application log.
+ */
+export const resetUserPassword = async (actor, targetId, req = null) => {
+  if (!mongoose.isValidObjectId(targetId)) {
+    throw ApiError.notFound('User not found.');
+  }
+  if (String(actor._id) === String(targetId)) {
+    throw ApiError.badRequest('You cannot reset your own password here. Use Change Password instead.');
+  }
+
+  const target = await User.findById(targetId);
+  if (!target) {
+    throw ApiError.notFound('User not found.');
+  }
+
+  if (actor.role === ROLES.WARDEN) {
+    if (!WARDEN_RESETTABLE_ROLES.includes(target.role)) {
+      await logSecurityEvent({
+        eventType: SECURITY_EVENT_TYPES.PRIVILEGE_ESCALATION_ATTEMPT,
+        severity: SECURITY_SEVERITIES.HIGH,
+        targetEntity: 'User',
+        targetEntityId: target._id,
+        hostelId: actor.hostelId,
+        req,
+        details: { reason: 'Warden attempted to reset a password outside student and staff roles', targetRole: target.role },
+      });
+      throw ApiError.forbidden('Wardens can only reset student and hostel staff passwords.');
+    }
+    if (!actor.hostelId || String(target.hostelId) !== String(actor.hostelId)) {
+      await logSecurityEvent({
+        eventType: SECURITY_EVENT_TYPES.CROSS_HOSTEL_ACCESS_ATTEMPT,
+        severity: SECURITY_SEVERITIES.HIGH,
+        targetEntity: 'User',
+        targetEntityId: target._id,
+        hostelId: actor.hostelId,
+        req,
+        details: { reason: 'Warden attempted to reset a password for a user outside their hostel' },
+      });
+      throw ApiError.forbidden('You can only reset passwords for users of your own hostel.');
+    }
+  } else if (actor.role !== ROLES.SUPER_ADMIN) {
+    throw ApiError.forbidden('You are not allowed to reset passwords.');
+  }
+
+  if (!target.isActive) {
+    throw ApiError.badRequest('This account is deactivated. Reactivate it before resetting the password.');
+  }
+
+  const temporaryPassword = generateTemporaryPassword();
+  target.passwordHash = await hashPassword(temporaryPassword);
+  target.passwordChangedAt = new Date();
+  target.mustChangePassword = true;
+  await target.save();
+
+  await logSecurityEvent({
+    eventType: SECURITY_EVENT_TYPES.PASSWORD_RESET,
+    severity: SECURITY_SEVERITIES.MEDIUM,
+    targetEntity: 'User',
+    targetEntityId: target._id,
+    hostelId: target.hostelId,
+    req,
+    details: {
+      reason: 'Password reset by authorized user',
+      targetEmail: target.email,
+      targetRole: target.role,
+    },
+  });
+
+  return { user: sanitizeUser(target), temporaryPassword };
+};
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Users a WARDEN may manage (DEC-022): STUDENT and HOSTEL_STAFF of the warden's own
+ * hostel. Exists so wardens can find whom to reset without needing the SUPER_ADMIN
+ * user list. Returns the safe user shape only, capped at 100 rows.
+ */
+export const listHostelUsers = async (actor, { search, role } = {}) => {
+  if (!actor.hostelId) {
+    throw ApiError.forbidden('Your account is not assigned to a hostel.');
+  }
+
+  const filter = {
+    hostelId: actor.hostelId,
+    role: { $in: WARDEN_RESETTABLE_ROLES },
+  };
+  if (role && WARDEN_RESETTABLE_ROLES.includes(role)) {
+    filter.role = role;
+  }
+
+  const term = typeof search === 'string' ? search.trim().slice(0, 80) : '';
+  if (term) {
+    const pattern = new RegExp(escapeRegex(term), 'i');
+    filter.$or = [{ name: pattern }, { email: pattern }, { studentId: pattern }, { employeeId: pattern }];
+  }
+
+  const [users, total] = await Promise.all([
+    User.find(filter).populate('roomId', 'roomNumber').sort({ name: 1 }).limit(100),
+    User.countDocuments(filter),
+  ]);
+
+  return { users: users.map(sanitizeUser), total };
 };

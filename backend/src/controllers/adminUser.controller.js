@@ -4,6 +4,18 @@ import ApiError from '../utils/ApiError.js';
 import { hashPassword } from '../utils/password.js';
 import { sanitizeUser } from '../utils/userSerializer.js';
 import { ROLE_VALUES } from '../constants/roles.js';
+import { passwordPolicySchema } from '../validators/auth.validator.js';
+import { logSecurityEvent } from '../services/securityAudit.service.js';
+import { SECURITY_EVENT_TYPES, SECURITY_SEVERITIES } from '../models/SecurityAuditLog.js';
+
+/** Enforce the shared password policy on admin-supplied passwords (DEC-022). */
+const assertPasswordPolicy = (password) => {
+  const result = passwordPolicySchema.safeParse(password);
+  if (!result.success) {
+    const issues = result.error.issues || result.error.errors || [];
+    throw ApiError.badRequest(issues.map((i) => i.message).join('; ') || 'Password does not meet the policy.');
+  }
+};
 
 export const listUsers = asyncHandler(async (req, res) => {
   const { search, role, status, hostelId } = req.query;
@@ -98,12 +110,15 @@ export const createUser = asyncHandler(async (req, res) => {
     throw ApiError.conflict('A user with this email address already exists.');
   }
 
+  assertPasswordPolicy(password);
   const passwordHash = await hashPassword(password);
 
   const newUser = await User.create({
     name: name.trim(),
     email: email.toLowerCase().trim(),
     passwordHash,
+    // Admin-provisioned accounts must replace the initial password on first login
+    mustChangePassword: true,
     role,
     phone: phone?.trim() || undefined,
     studentId: studentId?.trim() || undefined,
@@ -162,12 +177,37 @@ export const updateUser = asyncHandler(async (req, res) => {
   if (departmentId !== undefined) user.departmentId = departmentId || undefined;
   if (isActive !== undefined) user.isActive = Boolean(isActive);
 
-  // If new password provided, rehash
-  if (password && password.trim().length >= 6) {
+  // A password supplied here is an admin reset: shared policy, forced change on next
+  // login, existing sessions revoked, and an audit entry. The admin's own password is
+  // changed through /auth/change-password so they are not logged out of their session.
+  const passwordProvided = typeof password === 'string' && password.length > 0;
+  if (passwordProvided) {
+    if (String(user._id) === String(req.user._id)) {
+      throw ApiError.badRequest('Use Change Password to change your own password.');
+    }
+    assertPasswordPolicy(password);
     user.passwordHash = await hashPassword(password);
+    user.passwordChangedAt = new Date();
+    user.mustChangePassword = true;
   }
 
   await user.save();
+
+  if (passwordProvided) {
+    await logSecurityEvent({
+      eventType: SECURITY_EVENT_TYPES.PASSWORD_RESET,
+      severity: SECURITY_SEVERITIES.MEDIUM,
+      targetEntity: 'User',
+      targetEntityId: user._id,
+      hostelId: user.hostelId,
+      req,
+      details: {
+        reason: 'Password set through the admin user form',
+        targetEmail: user.email,
+        targetRole: user.role,
+      },
+    });
+  }
 
   res.status(200).json({
     success: true,
