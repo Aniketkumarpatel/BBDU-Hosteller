@@ -209,6 +209,19 @@
 
 ---
 
+### DEC-016: Mandatory Pull-Before-Push Git Protocol
+- **Date**: 2026-10-09
+- **Status**: Accepted
+- **Context**: In multi-device or collaborative development environments, remote changes can land while local work is underway. Pushing directly without synchronizing causes non-fast-forward push rejections and dirty merge graphs.
+- **Alternatives Considered**:
+  - *Alternative A: Push and resolve errors on failure*: Reactive, prone to non-fast-forward failures and panic merges.
+  - *Alternative B: Force pushing (git push --force)*: Extremely dangerous; overwrites remote commits and destroys teammate work.
+  - *Alternative C: Mandatory Pull with Rebase Before Push (Selected)*: Enforce running `git pull --rebase origin <branch>` before every `git push`.
+- **Rationale**: Guarantees clean, linear git commit history, instantly surfaces any upstream changes before pushing, and eliminates broken push rejections.
+- **Consequences**: Codified as Rule 13 in `CLAUDE.md` and integrated into all deployment and session procedures.
+
+---
+
 ## Decision Log Template (For New Tasks)
 
 When making any new non-trivial decision, copy and fill out this template at the bottom of this file:

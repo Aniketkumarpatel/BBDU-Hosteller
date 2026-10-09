@@ -665,7 +665,7 @@ Frontend proxies `/api` to `http://localhost:5000` during development, so `VITE_
 | Initial | Step 17 | Security hardening and compliance |
 | Initial | Step 18 | Final production readiness audit |
 | 2026-10-08 | Docs | Created CLAUDE.md, report.md, architecture.md, decision.md |
-| 2026-10-09 | Pilot Plan | Defined Section 17 First Pilot Focus (Complaint-to-Resolution MVP), reconciled Node.js version, logged DEC-015 |
+| 2026-10-09 | Governance | Defined Section 17 First Pilot Focus (DEC-015), added Rule 13 Pull-Before-Push (DEC-016), reconciled Node.js version |
 
 ---
 

@@ -38,6 +38,7 @@ When you have finished, check your own output against these reference files, fix
 10. **No guessing.** Never predict or guess an answer from general prior knowledge. Check real references and do research, then choose logically what is right or wrong for this specific codebase.
 11. **Decision logging mandatory.** For every important task, update `decision.md` explaining why a decision was made over alternatives. Skip this only for trivial tasks (fixing a typo, formatting).
 12. **Report completed work.** After completing any task, update `report.md` with what was done, what was verified, and any follow-up items.
+13. **Always pull before push.** Always run `git pull --rebase origin <branch>` before executing `git push`. Never attempt a blind push without synchronizing remote commits first.
 
 ### Code Conventions (This Project)
 
@@ -52,10 +53,12 @@ When you have finished, check your own output against these reference files, fix
 - Scheduler: Single 60-second `setInterval` loop handles all background jobs (SLA, maintenance, cleaning, outpass)
 - No em dashes anywhere in generated content
 
-### File Modification Rules
+### File Modification & Git Rules
 
 - Never delete or modify existing comments and docstrings unrelated to your change
 - Never refactor surrounding code unless explicitly asked
 - One concern per commit. Do not mix unrelated changes.
 - Run `npm test` in backend after any backend change
 - Run `npm run build` in frontend after any frontend change
+- Always pull before push: `git pull --rebase origin main` before `git push origin main`
+
