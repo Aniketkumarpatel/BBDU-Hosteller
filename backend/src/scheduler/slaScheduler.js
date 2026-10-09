@@ -1,4 +1,5 @@
 import { processSlaAndEscalations } from '../services/sla.service.js';
+import env from '../config/env.js';
 
 let intervalId = null;
 let isProcessing = false;
@@ -13,7 +14,7 @@ export const runSlaSchedulerOnce = async () => {
 
   isProcessing = true;
   try {
-    const results = await processSlaAndEscalations();
+    const results = await processSlaAndEscalations({ pilotMode: env.PILOT_MODE });
     return results;
   } catch (err) {
     console.error('[slaScheduler] Cycle execution error:', err.message);
@@ -32,6 +33,11 @@ export const startSlaScheduler = (intervalMs = 60000) => {
   }
 
   console.log(`[slaScheduler] SLA monitoring & auto-escalation engine started (interval: ${intervalMs}ms)`);
+  console.log(
+    env.PILOT_MODE
+      ? '[slaScheduler] PILOT_MODE=true: auto-escalation OFF, deferred-module jobs skipped, breaches notify hostel wardens only'
+      : '[slaScheduler] PILOT_MODE=false: full automatic escalation chain and all module jobs are ACTIVE'
+  );
 
   intervalId = setInterval(async () => {
     try {

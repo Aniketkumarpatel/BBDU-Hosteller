@@ -448,10 +448,81 @@ export const escalateComplaint = async (complaint, customReason = null) => {
 };
 
 /**
+ * Active wardens of a complaint's own hostel. Deliberately no fallback to wardens
+ * of other hostels (unlike findEscalationTarget): pilot notices must not cross
+ * hostel boundaries.
+ */
+const findHostelWardens = async (hostelId) => {
+  if (!hostelId) return [];
+  return User.find({ role: ROLES.WARDEN, hostelId, isActive: true }).select('_id').lean();
+};
+
+/**
+ * Notify the complaint's hostel wardens only. Never throws: a failed
+ * notification must not abort the scheduler pass. Returns the number sent.
+ */
+const notifyHostelWardens = async (complaint, { type, title, message }) => {
+  try {
+    const wardens = await findHostelWardens(complaint.hostelId);
+    if (wardens.length === 0) {
+      console.warn(`[SLA] No active warden found for complaint ${complaint.complaintId}; notice not sent`);
+      return 0;
+    }
+    await Promise.all(
+      wardens.map((w) =>
+        createNotification({
+          recipient: w._id,
+          type,
+          title,
+          message,
+          relatedEntityType: 'COMPLAINT',
+          relatedEntityId: complaint._id,
+          metadata: { complaintId: complaint.complaintId, priority: complaint.priority },
+        })
+      )
+    );
+    return wardens.length;
+  } catch (e) {
+    console.error('[slaService] Error notifying hostel wardens:', e.message);
+    return 0;
+  }
+};
+
+/**
+ * Pilot breach handling (DEC-020): mark the complaint and its active cycle as
+ * BREACHED without reassigning it to anyone. Mirrors the status bookkeeping that
+ * escalateComplaint performs, minus the reassignment.
+ */
+const recordBreachWithoutEscalation = async (complaint, now) => {
+  complaint.slaStatus = SLA_STATUSES.BREACHED;
+  if (!complaint.slaBreachedAt) complaint.slaBreachedAt = now;
+  await complaint.save();
+  await ComplaintSlaCycle.updateMany(
+    { complaintId: complaint._id, status: SLA_STATUSES.ACTIVE },
+    { $set: { status: SLA_STATUSES.BREACHED, breachedAt: now } }
+  );
+};
+
+/** Scheduler job groups skipped in pilot mode (modules deferred by DEC-015). */
+export const PILOT_SKIPPED_JOBS = Object.freeze([
+  'preventiveMaintenance',
+  'cleaningTasks',
+  'outpassMonitoring',
+  'assetLifecycle',
+  'financeLifecycle',
+]);
+
+/**
  * SLA Monitor & Auto-Escalation Engine
  * Idempotent batch worker intended to run periodically (e.g. every minute).
+ *
+ * Pilot mode (DEC-020, default off): no automatic escalation or reassignment,
+ * a breach notifies the hostel's wardens only, unassigned complaints remind the
+ * wardens, and jobs of modules deferred by DEC-015 are skipped. Work order SLA
+ * monitoring and student services jobs still run (they only act on records the
+ * pilot does not create).
  */
-export const processSlaAndEscalations = async () => {
+export const processSlaAndEscalations = async ({ pilotMode = false } = {}) => {
   const now = new Date();
   const results = {
     processedCount: 0,
@@ -460,6 +531,11 @@ export const processSlaAndEscalations = async () => {
     breachesRecorded: 0,
     errors: [],
   };
+  if (pilotMode) {
+    results.pilotMode = true;
+    results.wardenNotificationsSent = 0;
+    results.pilotSkippedJobs = [...PILOT_SKIPPED_JOBS];
+  }
 
   // Find all complaints with an ACTIVE SLA and still in an operational state
   const activeComplaints = await Complaint.find({
@@ -517,6 +593,13 @@ export const processSlaAndEscalations = async () => {
             }).catch((e) =>
               console.error('[slaService] Error dispatching reminder warning:', e.message)
             );
+          } else if (pilotMode) {
+            // Unassigned complaint nearing its deadline: nobody else would be reminded
+            results.wardenNotificationsSent += await notifyHostelWardens(complaint, {
+              type: NOTIFICATION_TYPES.COMPLAINT_SLA_WARNING,
+              title: 'Unassigned Complaint Nearing SLA Deadline',
+              message: `Complaint #${complaint.complaintId} (${complaint.priority} priority) has no owner and is close to its resolution deadline. Please assign it.`,
+            });
           }
         }
       }
@@ -524,6 +607,20 @@ export const processSlaAndEscalations = async () => {
       // 2. Check SLA Deadline & Breach
       if (complaint.slaDueAt && now >= complaint.slaDueAt) {
         console.log(`[SLA] Complaint ${complaint.complaintId} breached`);
+
+        if (pilotMode) {
+          // DEC-020: never reassign or notify executives during the pilot. The
+          // breach leaves the ACTIVE set, so wardens are told once per SLA cycle.
+          await recordBreachWithoutEscalation(complaint, now);
+          results.breachesRecorded += 1;
+          results.wardenNotificationsSent += await notifyHostelWardens(complaint, {
+            type: NOTIFICATION_TYPES.COMPLAINT_SLA_BREACHED,
+            title: 'SLA Breached: Action Needed',
+            message: `Complaint #${complaint.complaintId} (${complaint.priority} priority) passed its resolution deadline. It has not been reassigned automatically.`,
+          });
+          continue;
+        }
+
         // Find if escalation is enabled in SLA rule
         let escalationEnabled = true;
         if (complaint.slaRuleId) {
@@ -597,49 +694,52 @@ export const processSlaAndEscalations = async () => {
     console.error('[slaEngine] Error processing work order SLAs:', err.message);
   }
 
-  // Preventive Maintenance Engine Integration (Step 9)
-  try {
-    const { processPreventiveMaintenanceJobs } = await import('./preventiveMaintenance.service.js');
-    const pmResults = await processPreventiveMaintenanceJobs(now);
-    results.preventiveMaintenance = pmResults;
-  } catch (err) {
-    console.error('[slaEngine] Error processing preventive maintenance:', err.message);
-  }
+  // Deferred-module jobs (DEC-015). Skipped in pilot mode (DEC-020); see PILOT_SKIPPED_JOBS.
+  if (!pilotMode) {
+    // Preventive Maintenance Engine Integration (Step 9)
+    try {
+      const { processPreventiveMaintenanceJobs } = await import('./preventiveMaintenance.service.js');
+      const pmResults = await processPreventiveMaintenanceJobs(now);
+      results.preventiveMaintenance = pmResults;
+    } catch (err) {
+      console.error('[slaEngine] Error processing preventive maintenance:', err.message);
+    }
 
-  // Cleaning & Housekeeping Engine Integration (Step 11)
-  try {
-    const { processCleaningTasks } = await import('./cleaning.service.js');
-    const clnResults = await processCleaningTasks(now);
-    results.cleaningTasks = clnResults;
-  } catch (err) {
-    console.error('[slaEngine] Error processing cleaning tasks:', err.message);
-  }
+    // Cleaning & Housekeeping Engine Integration (Step 11)
+    try {
+      const { processCleaningTasks } = await import('./cleaning.service.js');
+      const clnResults = await processCleaningTasks(now);
+      results.cleaningTasks = clnResults;
+    } catch (err) {
+      console.error('[slaEngine] Error processing cleaning tasks:', err.message);
+    }
 
-  // Visitor & Outpass Management Engine Integration (Step 12)
-  try {
-    const { processOverdueOutpasses } = await import('./outpass.service.js');
-    const outpassResults = await processOverdueOutpasses(now);
-    results.outpassMonitoring = outpassResults;
-  } catch (err) {
-    console.error('[slaEngine] Error processing overdue outpasses:', err.message);
-  }
+    // Visitor & Outpass Management Engine Integration (Step 12)
+    try {
+      const { processOverdueOutpasses } = await import('./outpass.service.js');
+      const outpassResults = await processOverdueOutpasses(now);
+      results.outpassMonitoring = outpassResults;
+    } catch (err) {
+      console.error('[slaEngine] Error processing overdue outpasses:', err.message);
+    }
 
-  // Hostel Asset Lifecycle & Inventory Engine Integration (Step 14)
-  try {
-    const { processAssetLifecycleJobs } = await import('./asset.service.js');
-    const assetResults = await processAssetLifecycleJobs(now);
-    results.assetLifecycle = assetResults;
-  } catch (err) {
-    console.error('[slaEngine] Error processing asset lifecycle jobs:', err.message);
-  }
+    // Hostel Asset Lifecycle & Inventory Engine Integration (Step 14)
+    try {
+      const { processAssetLifecycleJobs } = await import('./asset.service.js');
+      const assetResults = await processAssetLifecycleJobs(now);
+      results.assetLifecycle = assetResults;
+    } catch (err) {
+      console.error('[slaEngine] Error processing asset lifecycle jobs:', err.message);
+    }
 
-  // Hostel Finance & Budget Monitoring Engine Integration (Step 15)
-  try {
-    const { processFinanceLifecycleJobs } = await import('./finance.service.js');
-    const financeResults = await processFinanceLifecycleJobs(now);
-    results.financeLifecycle = financeResults;
-  } catch (err) {
-    console.error('[slaEngine] Error processing finance lifecycle jobs:', err.message);
+    // Hostel Finance & Budget Monitoring Engine Integration (Step 15)
+    try {
+      const { processFinanceLifecycleJobs } = await import('./finance.service.js');
+      const financeResults = await processFinanceLifecycleJobs(now);
+      results.financeLifecycle = financeResults;
+    } catch (err) {
+      console.error('[slaEngine] Error processing finance lifecycle jobs:', err.message);
+    }
   }
 
   // Student Services & Digital Communication Lifecycle Engine Integration (Step 16)

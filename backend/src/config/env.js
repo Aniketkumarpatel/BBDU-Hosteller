@@ -15,6 +15,8 @@ const env = Object.freeze({
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '',
   CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
   isProduction: process.env.NODE_ENV === 'production',
+  // Pilot gating (DEC-020): only the literal string 'true' enables it. Default is off.
+  PILOT_MODE: process.env.PILOT_MODE === 'true',
 });
 
 export default env;
