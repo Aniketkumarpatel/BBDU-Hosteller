@@ -261,6 +261,101 @@
 
 ---
 
+### DEC-020: Backend Pilot Gating Switch and Warden-Only Breach Notification
+- **Date**: 2026-10-09
+- **Status**: Accepted and implemented 2026-10-09 (Phase 5 task 5.1). Verified: 7 new tests and the full suite (277 of 277) pass.
+- **Context**: DEC-015 and DEC-017 scoped the pilot, but only the frontend navigation is gated (`VITE_PILOT_MODE`). A code audit found: (a) all seeded SLA rules have `escalationEnabled: true`, so a breach auto-reassigns Staff to Warden to Authority; (b) five deferred-module scheduler jobs (preventive maintenance, cleaning, outpass, asset, finance) run for pilot users; (c) with escalation disabled the scheduler marks `BREACHED` but sends no notification, so nobody is told; (d) the 75 percent reminder only goes to the assignee, so unassigned complaints get none.
+- **Alternatives Considered**:
+  - *Alternative A: Set `escalationEnabled: false` on the seeded SLA rules only*: Smallest change, works through existing code. But it is data, not enforcement: an Admin editing a rule in the UI, a re-seed, or a new rule silently re-enables executive escalation, and it does nothing for the deferred scheduler jobs or the silent breach.
+  - *Alternative B: Hide the Authority and Super Admin accounts so escalation notifications go nowhere*: Hides the symptom, leaves state transitions (reassignment to Authority) happening, and corrupts the pilot metrics.
+  - *Alternative C: Backend `PILOT_MODE` environment switch enforced in code (Selected)*: When on, `escalateComplaint` is never called, deferred job groups are skipped, a breach notifies only the assigned Warden once per SLA cycle, and unassigned complaints remind the Warden. Default is off, so all existing tests and the full-platform behavior are unchanged when the flag is absent.
+- **Rationale**: The pilot promise is explicit in the USP ("wardens can see what is stuck") and DEC-015 forbids executive paging. Only an enforced switch makes the boundary independent of data and of administrator actions. A flag also gives a clean rollback path: each later module wave can remove its job from the skip list when its gate opens.
+- **Consequences**: New env variable documented in `.env.example`. New tests must prove no Authority notification or reassignment occurs under `PILOT_MODE`. Scheduler job list in `report.md` Section 12 and `architecture.md` updated.
+- **Implementation notes (2026-10-09)**:
+  - The flag is read in one place for runtime (`slaScheduler.js` passes `env.PILOT_MODE`). `processSlaAndEscalations({ pilotMode = false })` defaults to off so every existing test and verify script is unaffected, and so a developer's `.env` cannot change test outcomes.
+  - Q5 resolved by evidence: job 3 (work order SLA) and job 9 (student services: auto-publish and expire scheduled notices) act only on records the pilot never creates, so they keep running. Gating them would add code for no benefit. This reverses the earlier recommendation to skip them.
+  - Wardens are found by the complaint's own `hostelId` only. There is deliberately no fallback to wardens of other hostels (unlike `findEscalationTarget`), to preserve cross-hostel isolation. If a hostel has no active warden, a warning is logged and no notice is sent.
+  - A breach also marks the active `ComplaintSlaCycle` as `BREACHED` (the pre-existing non-pilot `escalationEnabled: false` path leaves the cycle `ACTIVE`; that path was intentionally not changed).
+  - `escalateComplaint` is called only by the scheduler (no manual escalation endpoint exists), so gating the scheduler closes every escalation path.
+  - **Known trade-off**: the default is fail-open (flag absent means full escalation), chosen so existing behavior and tests are unchanged. Mitigations: the startup log states the active mode, `.env.example` documents it, and it is Go-Live Gate item 6. A fail-closed production default can be revisited in Phase 7 when per-hostel policy exists.
+
+---
+
+### DEC-021: Complaint Photo Handling for the Pilot
+- **Date**: 2026-10-09
+- **Status**: Proposed (decision on exposure pending user, open question Q4)
+- **Context**: Photo upload is already implemented (multer, 5 MB, JPG/PNG/WEBP, local disk) though earlier docs listed it as not built. Files are served by an unauthenticated `express.static('/uploads')`, type is trusted from the client MIME header, EXIF metadata is retained, and storage is local disk. Photos may show student rooms and belongings.
+- **Alternatives Considered**:
+  - *Alternative A: Leave as is, add an access note*: Zero effort, but any URL holder can view the image and EXIF can carry location data. Fails Go-Live Gate item 3.
+  - *Alternative B: Disable the photo field for the pilot, revisit in wave 8*: Fastest and safest. Loses a useful diagnostic input for plumbing and electrical faults; technicians may ask for it.
+  - *Alternative C: Harden then keep (Selected as the recommended direction)*: Replace public static with an authenticated route enforcing the same visibility rules as the complaint (owner student, assigned staff, hostel Warden, Admin), verify file content by magic bytes, strip metadata, serve with `nosniff` and a private cache policy, make the storage directory configurable for a persistent volume, and set a retention rule.
+- **Rationale**: Authorization is already solved for complaints, so reusing it for files is cheap and removes the exposure class entirely. Whether to ship it in the pilot at all is a product call, hence open question Q4. If the user prefers B, Alternative C still happens before wave 8.
+- **Consequences**: Possible new dependency for image re-encoding (needs its own approval). Existing stored URLs change shape. Frontend image components must send credentials, because plain `<img src>` cannot attach a bearer token; implementation must choose between short-lived signed URLs and fetch-to-blob.
+
+---
+
+### DEC-022: Password Lifecycle and Pilot Credential Provisioning
+- **Date**: 2026-10-09
+- **Status**: Accepted. Backend (5.3a) and frontend (5.3b) implemented and verified 2026-10-10. Provisioning script, seed guard and demo-credential audit script (5.3c) still open.
+- **Context**: No endpoint exists for changing or resetting a password (verified by search). Seeds use the shared `Password@123` and public demo emails. Go-Live Gate item 4 requires unique credentials, which is unenforceable without a way to change or recover them.
+- **Alternatives Considered**:
+  - *Alternative A: Provision unique passwords once, tell users never to forget them*: No code. Any lost password needs a database edit by the project team, which does not scale past a handful of users and encourages sharing.
+  - *Alternative B: Email-based reset links*: Standard, but requires an email provider, deliverability work, and domain ownership, none of which exist yet. Also couples the pilot to wave 8 infrastructure.
+  - *Alternative C: Self-service change, admin-initiated reset with a one-time temporary password, forced change on first login, and a provisioning script (Selected)*: Needs only existing infrastructure. Adds a `mustChangePassword` flag on `User`. The provisioning script generates unique random passwords and prints them once for hand-off. Seeds refuse to create demo accounts when `NODE_ENV=production`.
+- **Rationale**: Meets the gate with zero external services, keeps the Warden or project team as the reset authority during the pilot, and leaves a clean upgrade path to email reset in wave 8.
+- **Consequences**: Schema change on `User` (index and model tests to update). Reset actions must write `SecurityAuditLog` events. Temporary password is shown once and never logged. Rate limiting on the change endpoint reuses the auth limiter.
+- **Implementation notes and scope changes (2026-10-10)**:
+  - **Reset scope (user decision, RBAC extension)**: SUPER_ADMIN may reset any other account. WARDEN may reset only STUDENT and HOSTEL_STAFF of their own hostel; an out-of-role attempt is audited as `PRIVILEGE_ESCALATION_ATTEMPT` and a cross-hostel attempt as `CROSS_HOSTEL_ACCESS_ATTEMPT`, both refused with 403. Chosen over "Super Admin only" because forgotten passwords are the most common support request and the Warden is on site. Nobody resets their own password through this endpoint.
+  - **Session revocation was added** (not in the original draft). JWTs are stateless, so a reset that leaves old tokens alive does not remove a shared or stolen credential. `User.passwordChangedAt` plus a check in `requireAuth` revokes older tokens. Alternatives rejected: a server-side token denylist (new storage and lookup on every request) and shortening token lifetime (does not revoke, hurts usability). Known tolerance: JWT `iat` has one-second precision, so a token issued in the same second as the change is accepted. This is deliberate, otherwise the fresh token returned by change-password would be rejected.
+  - **Forced-change gate is enforced in the backend** (`requireAuth`), not only in the UI. Allow-list via `requireAuthAllowPasswordChange`: `/auth/me` and `/auth/change-password` (logout has no auth). Anything else returns 403 `PASSWORD_CHANGE_REQUIRED`.
+  - **Wrong current password returns 400, never 401**, because the frontend interceptor treats 401 as an expired session and clears credentials.
+  - **A weak side door was closed**: `PUT /api/admin/users/:id` accepted a 6-character `password` with no audit. All entry points (registration, change, reset, admin create, admin update) now share one `passwordPolicySchema`. Admin-created users must change their initial password. An admin cannot set their own password through the user form.
+  - The reset endpoint lives under `/api/auth/users/:id/reset-password` because the `/api/admin` router is SUPER_ADMIN-only. It is intentionally not behind `authLimiter`, since a Warden resetting several residents from one campus IP would otherwise hit the shared limit (see DEC-025).
+  - **Frontend and Warden list endpoint (5.3b)**: a Warden cannot reach `/api/admin/users`, so a hostel-scoped `GET /api/auth/hostel-users` was added (WARDEN only, own-hostel STUDENT and HOSTEL_STAFF, escaped literal search so regex metacharacters cannot cause regex injection or ReDoS, capped at 100 rows, an out-of-scope `role` filter is ignored rather than honored). The temporary password lives only in React component state inside `TemporaryPasswordModal`, is never put in a URL, localStorage or log, and is cleared when the dialog closes (verified in a real browser). The forced-change redirect is mirrored in `ProtectedRoute` but the backend gate remains the real control. The wrong-current-password error is a 400 so the axios 401 interceptor does not sign the user out.
+  - **Pre-existing defect found while verifying, fixed minimally**: the admin Users page crashed at HEAD because the API wraps lists (`{ users, total }`) and returns `id`, while the page expected bare arrays with `_id`. Fixed only on that page via a small `toList` normalizer. Sibling admin pages share the pattern and are NOT fixed (report.md D1); that is deliberately a separate concern.
+  - Audit details never contain the temporary password, current password, or any hash. The audit logger already redacts keys containing `password`; tests assert the absence of the temporary password and bcrypt hashes in all audit documents.
+
+---
+
+### DEC-023: Roadmap Sequencing - Fixed Pilot Phases, Evidence-Gated Candidate Waves, Campus-Wide End State
+- **Date**: 2026-10-09
+- **Status**: Accepted (confirmed by the user on 2026-10-09)
+- **Context**: The project had a pilot plan but no defined end. The user defined the end state as campus-wide rollout and asked that the order of post-pilot work be decided after pilot feedback. A 4-week pilot duration was chosen.
+- **Alternatives Considered**:
+  - *Alternative A: Fully scripted calendar roadmap now*: Gives a tidy plan, but fixes the order of modules before any user evidence exists. That repeats the mistake DEC-015 corrected (assuming completeness equals adoption).
+  - *Alternative B: Only a pilot, no plan beyond it*: Honest but leaves the "till the end of project" request unmet and gives the university no view of the destination.
+  - *Alternative C: Fixed Phases 5, 6 and 12, candidate waves 7 to 11 with evidence gates and dependency rules (Selected)*: The near term and the finish line are concrete, the middle is explicit about what evidence would justify each wave.
+- **Rationale**: Preserves DEC-015's principle that user evidence, not code completeness, drives scope. Dependency rules (19.4) stop module waves from being enabled before the core loop is stable.
+- **Consequences**: Phase 6 exit must produce a written wave ranking and the agreed numeric thresholds as a new decision entry. Waves have gates, not dates. Phase 12 defines project completion.
+
+---
+
+### DEC-024: Documentation Governance - Verified Facts, Static Versus Executed Counts, User-Owned Git Commits
+- **Date**: 2026-10-09
+- **Status**: Accepted (user confirmed git ownership on 2026-10-09)
+- **Context**: A code audit found the reference docs had drifted: git history, test suites, upload support, registration allocation, the scheduler job list, and script inventory were stale. MongoDB was not reachable during the audit, so the test suite could not be executed. The user also stated they commit to git themselves.
+- **Alternatives Considered**:
+  - *Alternative A: Update docs from memory of the last known state*: Fast, and it repeats the exact failure that caused the drift.
+  - *Alternative B: Update numbers by static count and present them as results*: Looks complete, but a count of `test(` declarations is not a pass result and would overstate verification.
+  - *Alternative C: Verify each claim against code, label static versus executed figures, and leave all git actions to the user (Selected)*.
+- **Rationale**: The Quality Standards forbid guessing and require honest reporting. Labeling the unexecuted test count keeps the record truthful and creates a tracked task (5.9) to close it.
+- **Consequences**: Claude edits files only and never runs `git commit` or `git push`; Rule 13 (pull before push) and the one-concern-per-commit rule are applied by the user when committing. Suggested commit grouping for this change set: (1) docs audit corrections, (2) roadmap and decisions.
+
+---
+
+### DEC-025: Production Proxy Trust and Per-User Rate Limit Keying
+- **Date**: 2026-10-09
+- **Status**: Proposed (Phase 5 task 5.4, depends on the hosting answer Q1)
+- **Context**: Rate limiters in `rateLimiter.js` use the default IP key and no `trust proxy` is set anywhere. In production the auth limit is 20 per 15 minutes. Behind a reverse proxy, every request appears to come from the proxy IP, and on a campus network many users may share one NAT address. The whole cohort would share one login budget, and could lock itself out on the first morning.
+- **Alternatives Considered**:
+  - *Alternative A: Raise or remove the production auth limit*: Removes the lockout but also removes brute-force protection that DEC-013 established.
+  - *Alternative B: Set `trust proxy` only*: Fixes the proxy case (real client IP from `X-Forwarded-For`), but not campus NAT where many students genuinely share one public IP.
+  - *Alternative C: `trust proxy` set to the exact proxy hop count, plus auth routes keyed on IP combined with the submitted email (Selected)*: Brute force is limited per account and per source, a shared NAT no longer pools the cohort into one bucket.
+- **Rationale**: Keeps DEC-013's security intent while making the limit fit the real network. The hop count must match the real deployment, otherwise `X-Forwarded-For` can be spoofed to dodge limits, so the value is set only after Q1 is answered.
+- **Consequences**: New tests for the limiter key function. The global limiter (1000 per 15 minutes) should be re-sized against expected cohort traffic during load testing in 5.4. Keying by submitted email needs care not to create an account-lockout denial of service; use a per-email budget that is sized above realistic mistyped-password counts.
+
+---
+
 ## Decision Log Template (For New Tasks)
 
 When making any new non-trivial decision, copy and fill out this template at the bottom of this file:

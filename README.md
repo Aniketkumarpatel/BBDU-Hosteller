@@ -2,7 +2,7 @@
 
 **Smart Hostel Management & Complaint Escalation Platform**
 
-> Status: **Step 18 Complete - Pilot Ready: Complaint-to-Resolution Core Focus**.
+> Status: **Feature build complete (Steps 1 to 18). Pilot-staged, hardening required before real student data.** The roadmap, pilot blockers, and open questions are in `report.md` Sections 15 and 18 to 21.
 
 ## Tech Stack
 
@@ -21,7 +21,8 @@ The platform architecture is complete across 24 subsystems and 37 models, but fi
 - **Core Workflow**: Student submits issue > Warden triages & assigns owner > Staff acknowledges & resolves > Student verifies fix or reopens > Warden monitors resolution trail.
 - **Proposed USP**: Every hostel complaint has an owner, a deadline, and a visible resolution trail.
 - **Deferred for Pilot (Deployment Boundary)**: Finance, asset scrap, mess menus, cleaning checklists, gate outpass, and the AI command center are deferred from pilot navigation to eliminate operational friction.
-- **Auto-Escalation**: Deferred until university executives confirm escalation authority and threshold expectations; notification reminders and countdown deadlines remain active.
+- **Auto-Escalation**: Deferred until university executives confirm escalation authority and threshold expectations; notification reminders and countdown deadlines remain active. **Note**: this is the intended policy. The backend does not yet enforce it (seeded SLA rules still escalate), which is the first Phase 5 task (DEC-020).
+- **Demo Accounts**: The accounts below and the shared password are for development only. They must be disabled before any real pilot data (Go-Live Gate item 4).
 
 ---
 
@@ -67,12 +68,12 @@ npm run seed
 
 ## Core Systems & Engines (Steps 1–8)
 
-1. **Authentication & RBAC (Step 3)**: Secure JWT cookies/headers with 5 roles.
+1. **Authentication & RBAC (Step 3)**: Secure JWT bearer-token authentication (`Authorization` header, no cookies) with 5 roles. Password change and reset are available in the API (`POST /api/auth/change-password`, `POST /api/auth/users/:id/reset-password`; SUPER_ADMIN any user, WARDEN student and staff of own hostel) with forced first-login change and session revocation. Screens: `/change-password` (forced after a reset), `/warden/people` (Warden), and a Reset action on the admin Users page (DEC-022).
 2. **Location Hierarchy (Step 4)**: Hostels, Blocks, Floors, Rooms, and Departments with capacity checks.
 3. **Complaint Lifecycle Engine (Steps 5.1–5.4)**: `SUBMITTED → TRIAGED → ASSIGNED → ACKNOWLEDGED → IN_PROGRESS → STUDENT_VERIFICATION → RESOLVED / CLOSED` (with student `REOPENED` loop).
 4. **SLA Countdown & Automatic Escalation (Steps 5.5–6)**: 60-second central scheduler monitoring deadlines, breach warnings, and multi-tier escalations (Staff → Warden → Authority).
 5. **Admin SLA Configuration (Step 5.7)**: Real-time SLA rules configuration for Super Admins.
-6. **In-App Real-Time Notification Engine (Step 5.8)**: In-app alerts, unread counters, and instant notifications.
+6. **In-App Notification Engine (Step 5.8)**: In-app alerts and unread counters, delivered by REST polling (no WebSocket push, no SMS or email yet).
 7. **Analytics & Operational Intelligence (Step 7)**: Aggregations, mean time to resolve (MTTR), department performance, and SLA breach trends.
 8. **Maintenance & Work Order Engine (Step 8)**:
    - **Bridging Gap**: Converts student complaints into physical engineering tickets (`WO-2026-XXXXX`).
@@ -300,12 +301,15 @@ npm test
 cd backend
 npm test
 ```
-Result:
+Result at the Step 18 audit (20 suites):
 - **Tests**: 248 total
 - **Passed**: 235
 - **Failed**: 0
 - **Skipped**: 13 (standalone URI requirement checks)
-- **Suites**: 20 complete integration suites
+
+Latest executed run (2026-10-10, after Phase 5 task 5.3b): **290 tests, 290 passed, 0 failed, 0 skipped, 23 suites** (hostel allocation, pilot gating and password lifecycle suites were added after Step 18). A running MongoDB is required, and the suites drop their database, so never point `TEST_MONGODB_URI` at data you want to keep. Details in `report.md` Section 2.
+
+Pilot deployments must set `PILOT_MODE=true` in `backend/.env` (see `backend/.env.example`) and `VITE_PILOT_MODE=true` in `frontend/.env`.
 
 ### Database Model & Index Verification
 ```bash
