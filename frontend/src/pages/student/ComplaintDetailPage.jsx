@@ -276,7 +276,7 @@ export default function ComplaintDetailPage() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  Not Fixed — Reopen Complaint
+                  Not Fixed (Reopen Complaint)
                 </button>
               </div>
             </div>
@@ -546,7 +546,7 @@ export default function ComplaintDetailPage() {
                       </div>
                       <div className="flex min-w-0 flex-1 justify-between space-x-4 pt-1.5">
                         <div>
-                          <p className="text-xs font-bold text-slate-900">Resolution Rejected — Reopened</p>
+                          <p className="text-xs font-bold text-slate-900">Resolution Rejected: Reopened</p>
                           <p className="text-[11px] text-slate-500">Student reason: "{complaint.reopenReason}"</p>
                         </div>
                         <div className="whitespace-nowrap text-right text-[11px] text-slate-400">

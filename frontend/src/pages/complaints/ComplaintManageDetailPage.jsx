@@ -489,7 +489,7 @@ export default function ComplaintManageDetailPage() {
               </span>
               <div>
                 <h3 className="text-sm font-bold text-purple-900">
-                  Resolution Submitted — Waiting for Student Verification
+                  Resolution Submitted: Waiting for Student Verification
                 </h3>
                 <p className="text-xs text-purple-800 mt-0.5">
                   <strong>Resolution Note:</strong> "{complaint.resolutionNote}"
@@ -961,7 +961,7 @@ export default function ComplaintManageDetailPage() {
                         <span className="font-semibold text-slate-700">{wo.priority}</span>
                       </td>
                       <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
-                        {wo.dueAt ? new Date(wo.dueAt).toLocaleDateString() : '—'}
+                        {wo.dueAt ? new Date(wo.dueAt).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link

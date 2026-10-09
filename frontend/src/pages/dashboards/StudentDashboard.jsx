@@ -9,6 +9,7 @@ import outpassService from '../../services/outpassService.js';
 import { getUnreadCount } from '../../services/notificationService.js';
 import messService from '../../services/messService.js';
 import StatusBadge from '../../components/common/StatusBadge.jsx';
+import { IS_PILOT_MODE } from '../../config/pilot.js';
 
 function formatRelativeTime(dateInput) {
   if (!dateInput) return '';
@@ -291,7 +292,7 @@ export default function StudentDashboard() {
                   {getGreeting()}, {studentName} 👋
                 </h1>
                 <p className="mt-1 text-xs text-indigo-200 sm:text-sm">
-                  BBDU Hosteller – Your hostel, complaints and services in one place.
+                  BBDU Hosteller - Your hostel, complaints and services in one place.
                 </p>
               </div>
 
@@ -488,43 +489,47 @@ export default function StudentDashboard() {
                     <span className="mt-1 text-[11px] font-semibold">My Complaints</span>
                   </Link>
 
-                  <Link
-                    to="/outpass"
-                    className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-2.5 text-center text-slate-800 transition-all duration-200 hover:bg-slate-50 hover:shadow-2xs"
-                  >
-                    <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="mt-1 text-[11px] font-semibold">Outpass &amp; Pass</span>
-                  </Link>
+                  {!IS_PILOT_MODE && (
+                    <>
+                      <Link
+                        to="/outpass"
+                        className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-2.5 text-center text-slate-800 transition-all duration-200 hover:bg-slate-50 hover:shadow-2xs"
+                      >
+                        <svg className="h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="mt-1 text-[11px] font-semibold">Outpass &amp; Pass</span>
+                      </Link>
 
-                  <Link
-                    to="/mess"
-                    className="flex flex-col items-center justify-center rounded-lg border border-amber-200 bg-amber-50/80 p-2.5 text-center text-amber-900 transition-all duration-200 hover:bg-amber-100 hover:shadow-2xs"
-                  >
-                    <span className="text-base">🍽</span>
-                    <span className="mt-0.5 text-[11px] font-semibold">Mess &amp; Dining</span>
-                  </Link>
+                      <Link
+                        to="/mess"
+                        className="flex flex-col items-center justify-center rounded-lg border border-amber-200 bg-amber-50/80 p-2.5 text-center text-amber-900 transition-all duration-200 hover:bg-amber-100 hover:shadow-2xs"
+                      >
+                        <span className="text-base">🍽</span>
+                        <span className="mt-0.5 text-[11px] font-semibold">Mess &amp; Dining</span>
+                      </Link>
 
-                  <Link
-                    to="/student-services"
-                    className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-2.5 text-center text-slate-800 transition-all duration-200 hover:bg-slate-50 hover:shadow-2xs"
-                  >
-                    <svg className="h-5 w-5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
-                    <span className="mt-1 text-[11px] font-semibold">Student Services</span>
-                  </Link>
+                      <Link
+                        to="/student-services"
+                        className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-2.5 text-center text-slate-800 transition-all duration-200 hover:bg-slate-50 hover:shadow-2xs"
+                      >
+                        <svg className="h-5 w-5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        <span className="mt-1 text-[11px] font-semibold">Student Services</span>
+                      </Link>
 
-                  <Link
-                    to="/assets"
-                    className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-2.5 text-center text-slate-800 transition-all duration-200 hover:bg-slate-50 hover:shadow-2xs"
-                  >
-                    <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                    <span className="mt-1 text-[11px] font-semibold">Room Assets</span>
-                  </Link>
+                      <Link
+                        to="/assets"
+                        className="flex flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-2.5 text-center text-slate-800 transition-all duration-200 hover:bg-slate-50 hover:shadow-2xs"
+                      >
+                        <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        <span className="mt-1 text-[11px] font-semibold">Room Assets</span>
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
 

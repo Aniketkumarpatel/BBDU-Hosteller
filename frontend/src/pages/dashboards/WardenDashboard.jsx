@@ -7,6 +7,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner.jsx';
 import ErrorState from '../../components/common/ErrorState.jsx';
 import DashboardCard from '../../components/common/DashboardCard.jsx';
 import StatusBadge from '../../components/common/StatusBadge.jsx';
+import { IS_PILOT_MODE } from '../../config/pilot.js';
 
 let wardenDashboardCache = null;
 
@@ -80,39 +81,52 @@ export default function WardenDashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <Link
-                  to="/warden/analytics"
-                  className="rounded-lg bg-indigo-500 hover:bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  Hostel Analytics
-                </Link>
-                <Link
-                  to="/work-orders"
-                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
+                  to="/warden/complaints"
+                  className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3.5 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
-                  Work Orders
+                  Complaints Triage Queue
                 </Link>
-                <Link
-                  to="/maintenance"
-                  className="rounded-lg bg-teal-600 hover:bg-teal-700 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Maintenance
-                </Link>
-                <Link
-                  to="/mess"
-                  className="rounded-lg bg-amber-600 hover:bg-amber-700 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
-                >
-                  <span>🍽</span>
-                  Mess &amp; Dining
-                </Link>
+                {!IS_PILOT_MODE && (
+                  <>
+                    <Link
+                      to="/warden/analytics"
+                      className="rounded-lg bg-indigo-500 hover:bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      Hostel Analytics
+                    </Link>
+                    <Link
+                      to="/work-orders"
+                      className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                      </svg>
+                      Work Orders
+                    </Link>
+                    <Link
+                      to="/maintenance"
+                      className="rounded-lg bg-teal-600 hover:bg-teal-700 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      Maintenance
+                    </Link>
+                    <Link
+                      to="/mess"
+                      className="rounded-lg bg-amber-600 hover:bg-amber-700 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
+                    >
+                      <span>🍽</span>
+                      Mess &amp; Dining
+                    </Link>
+                  </>
+                )}
                 <span className="rounded-lg bg-white/10 px-3 py-1.5 font-mono text-xs font-medium text-white">
                   Emp ID: {user?.employeeId || 'WRD-STAFF'}
                 </span>
