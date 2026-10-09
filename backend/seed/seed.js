@@ -76,15 +76,28 @@ export const seedDatabase = async () => {
     { $set: { name: 'BBDU Girls Hostel', code: 'BBDGH' } }
   );
 
-  // 1. Department
-  let dept = await Department.findOne({ code: 'CSE' });
-  if (!dept) {
-    dept = await Department.create({
-      name: 'Computer Science & Engineering',
-      code: 'CSE',
-      description: 'Department of Computer Science & Engineering',
-    });
-    console.log('[seed] Created Department: CSE');
+  // 1. Departments (Academic and Facility Maintenance)
+  const REQUIRED_DEPARTMENTS = [
+    { code: 'CSE', name: 'Computer Science & Engineering', description: 'Department of Computer Science & Engineering' },
+    { code: 'PLUMB', name: 'Plumbing & Sanitation', description: 'Water fixtures, leakage, pipe repairs, and sanitary fittings' },
+    { code: 'ELEC', name: 'Electrical & Power', description: 'Wiring, fixtures, switches, lighting, and power backup' },
+    { code: 'HOUSEKEEPING', name: 'Housekeeping & Sanitation', description: 'Corridor cleaning, washroom hygiene, and waste collection' },
+    { code: 'IT_NETWORK', name: 'IT & Network Infrastructure', description: 'Wi-Fi connectivity, LAN drops, and digital infrastructure' },
+    { code: 'WATER_MAINT', name: 'Water Supply Maintenance', description: 'Overhead tanks, borewell motors, and drinking water coolers' },
+    { code: 'MESS_SERVICES', name: 'Mess & Dining Services', description: 'Hostel mess operations, catering, and dining hall maintenance' },
+    { code: 'CIVIL_CARPENTRY', name: 'Carpentry & Civil Maintenance', description: 'Doors, windows, furniture, locks, and masonry fixtures' },
+  ];
+
+  let dept = null;
+  for (const dData of REQUIRED_DEPARTMENTS) {
+    let existingDept = await Department.findOne({ code: dData.code });
+    if (!existingDept) {
+      existingDept = await Department.create(dData);
+      console.log(`[seed] Created Department: ${dData.code} (${dData.name})`);
+    }
+    if (dData.code === 'CSE') {
+      dept = existingDept;
+    }
   }
 
   // 2. Hostel Hierarchy: Seed all 7 required Hostels, Blocks (1, 2, 3), Floors (1, 2, 3, 4, 5), and Rooms

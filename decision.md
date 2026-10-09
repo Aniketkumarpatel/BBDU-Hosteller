@@ -248,6 +248,19 @@
 
 ---
 
+### DEC-019: Pilot Cohort Seeding and Facility Maintenance Department Alignment
+- **Date**: 2026-10-09
+- **Status**: Accepted
+- **Context**: The pilot required dedicated credentials and realistic test fixtures for Boys Hostel 1 (BBDU A and B Block, Block 1) across all three pilot roles (1 Warden, 2 Technicians, 3 Resident Students). Furthermore, the core complaint engine expected maintenance department codes (`PLUMB`, `ELEC`, `HOUSEKEEPING`, etc.), but previously only `CSE` existed in `seed.js`.
+- **Alternatives Considered**:
+  - *Alternative A: Require manual browser registration during testing*: Prone to misconfigured room numbers, unassigned staff departments, and wasted setup time.
+  - *Alternative B: Overwrite the entire database with a destructive reset*: Destructive, risks wiping existing test records and indexes.
+  - *Alternative C: Idempotent Pilot Cohort Seeder (`backend/scripts/seed-pilot-cohort.mjs`) and Main Seeder Alignment (`seed.js`) (Selected)*: Created an idempotent script that establishes all 7 maintenance departments, links the Pilot Hostel hierarchy (Hostel, Block 1, Floor 1, Rooms 101-105), provisions Warden (`warden@bbdu.ac.in`), Plumber (`staff@bbdu.ac.in`), Electrician (`electrician@bbdu.ac.in`), and 3 Students (`student@bbdu.ac.in`, `rohan@bbdu.ac.in`, `kabir@bbdu.ac.in`), and populates 5 baseline complaints spanning all 5 lifecycle states (`SUBMITTED`, `ASSIGNED`, `IN_PROGRESS`, `STUDENT_VERIFICATION`, `CLOSED`).
+- **Rationale**: Enables immediate field testing and developer QA out of the box without manual setup steps or risk of database corruption.
+- **Consequences**: Seeded complaints provide rich realistic state for all pilot dashboards (Student, Warden, Staff).
+
+---
+
 ## Decision Log Template (For New Tasks)
 
 When making any new non-trivial decision, copy and fill out this template at the bottom of this file:
