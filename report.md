@@ -666,6 +666,7 @@ Frontend proxies `/api` to `http://localhost:5000` during development, so `VITE_
 | Initial | Step 18 | Final production readiness audit |
 | 2026-10-08 | Docs | Created CLAUDE.md, report.md, architecture.md, decision.md |
 | 2026-10-09 | Governance | Defined Section 17 First Pilot Focus (DEC-015), added Rule 13 Pull-Before-Push (DEC-016), reconciled Node.js version |
+| 2026-10-09 | Pilot Phase 1 | Implemented frontend Pilot Mode flag (VITE_PILOT_MODE) and navigation scoping in DashboardLayout (DEC-017) |
 
 ---
 

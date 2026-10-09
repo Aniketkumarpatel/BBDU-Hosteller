@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react';
 import { Link, NavLink, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import NotificationBell from '../components/common/NotificationBell.jsx';
+import { IS_PILOT_MODE } from '../config/pilot.js';
 
 export const DashboardLayoutContext = createContext(false);
 
@@ -40,6 +41,12 @@ export default function DashboardLayout({ title, roleLabel, children }) {
             <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-indigo-700">
               {roleLabel || user?.role}
             </span>
+            {IS_PILOT_MODE && (
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 border border-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Pilot Focus
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-3 sm:gap-4">
@@ -101,54 +108,58 @@ export default function DashboardLayout({ title, roleLabel, children }) {
                 >
                   + Submit Complaint
                 </NavLink>
-                <NavLink
-                  to="/mess"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Mess &amp; Dining
-                </NavLink>
-                <NavLink
-                  to="/outpass"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Outpass &amp; Visitors
-                </NavLink>
-                <NavLink
-                  to="/assets"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Room Assets
-                </NavLink>
-                <NavLink
-                  to="/student-services"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Student Services
-                </NavLink>
+                {!IS_PILOT_MODE && (
+                  <>
+                    <NavLink
+                      to="/mess"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Mess &amp; Dining
+                    </NavLink>
+                    <NavLink
+                      to="/outpass"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Outpass &amp; Visitors
+                    </NavLink>
+                    <NavLink
+                      to="/assets"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Room Assets
+                    </NavLink>
+                    <NavLink
+                      to="/student-services"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Student Services
+                    </NavLink>
+                  </>
+                )}
               </>
             )}
 
@@ -179,114 +190,118 @@ export default function DashboardLayout({ title, roleLabel, children }) {
                 >
                   Hostel Complaints
                 </NavLink>
-                <NavLink
-                  to="/work-orders"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Work Orders
-                </NavLink>
-                <NavLink
-                  to="/assets"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Asset Inventory
-                </NavLink>
-                <NavLink
-                  to="/maintenance"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Preventive Maintenance
-                </NavLink>
-                <NavLink
-                  to="/mess"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Mess &amp; Dining
-                </NavLink>
-                <NavLink
-                  to="/cleaning"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Housekeeping
-                </NavLink>
-                <NavLink
-                  to="/outpass"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Outpass &amp; Visitors
-                </NavLink>
-                <NavLink
-                  to="/ai-command-center"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  AI Command Center
-                </NavLink>
-                <NavLink
-                  to="/finance"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Finance &amp; Expenses
-                </NavLink>
-                <NavLink
-                  to="/student-services"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Student Services
-                </NavLink>
+                {!IS_PILOT_MODE && (
+                  <>
+                    <NavLink
+                      to="/work-orders"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Work Orders
+                    </NavLink>
+                    <NavLink
+                      to="/assets"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Asset Inventory
+                    </NavLink>
+                    <NavLink
+                      to="/maintenance"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Preventive Maintenance
+                    </NavLink>
+                    <NavLink
+                      to="/mess"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Mess &amp; Dining
+                    </NavLink>
+                    <NavLink
+                      to="/cleaning"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Housekeeping
+                    </NavLink>
+                    <NavLink
+                      to="/outpass"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Outpass &amp; Visitors
+                    </NavLink>
+                    <NavLink
+                      to="/ai-command-center"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      AI Command Center
+                    </NavLink>
+                    <NavLink
+                      to="/finance"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Finance &amp; Expenses
+                    </NavLink>
+                    <NavLink
+                      to="/student-services"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Student Services
+                    </NavLink>
+                  </>
+                )}
               </>
             )}
 
@@ -317,102 +332,106 @@ export default function DashboardLayout({ title, roleLabel, children }) {
                 >
                   My Complaints
                 </NavLink>
-                <NavLink
-                  to="/work-orders"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Work Orders
-                </NavLink>
-                <NavLink
-                  to="/assets"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Asset Inventory
-                </NavLink>
-                <NavLink
-                  to="/maintenance"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Maintenance
-                </NavLink>
-                <NavLink
-                  to="/mess"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Mess &amp; Dining
-                </NavLink>
-                <NavLink
-                  to="/cleaning"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Housekeeping
-                </NavLink>
-                <NavLink
-                  to="/outpass"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Outpass &amp; Visitors
-                </NavLink>
-                <NavLink
-                  to="/finance"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Finance &amp; Expenses
-                </NavLink>
-                <NavLink
-                  to="/student-services"
-                  className={({ isActive }) =>
-                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                      isActive
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                    }`
-                  }
-                >
-                  Student Services
-                </NavLink>
+                {!IS_PILOT_MODE && (
+                  <>
+                    <NavLink
+                      to="/work-orders"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Work Orders
+                    </NavLink>
+                    <NavLink
+                      to="/assets"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Asset Inventory
+                    </NavLink>
+                    <NavLink
+                      to="/maintenance"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Maintenance
+                    </NavLink>
+                    <NavLink
+                      to="/mess"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Mess &amp; Dining
+                    </NavLink>
+                    <NavLink
+                      to="/cleaning"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Housekeeping
+                    </NavLink>
+                    <NavLink
+                      to="/outpass"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Outpass &amp; Visitors
+                    </NavLink>
+                    <NavLink
+                      to="/finance"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Finance &amp; Expenses
+                    </NavLink>
+                    <NavLink
+                      to="/student-services"
+                      className={({ isActive }) =>
+                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          isActive
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                        }`
+                      }
+                    >
+                      Student Services
+                    </NavLink>
+                  </>
+                )}
               </>
             )}
 

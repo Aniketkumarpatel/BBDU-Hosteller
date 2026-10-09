@@ -222,6 +222,19 @@
 
 ---
 
+### DEC-017: Frontend Pilot Mode Navigation Scoping (DEC-015 Implementation)
+- **Date**: 2026-10-09
+- **Status**: Accepted
+- **Context**: To implement DEC-015 (First Pilot Scope - Single-Workflow Complaint-to-Resolution MVP), pilot users (students, wardens, staff) needed a focused navigation experience without cognitive friction from deferred modules.
+- **Alternatives Considered**:
+  - *Alternative A: Deleting or commenting out unused routes and components*: Destructive, risks merge conflicts, and discards finished engineering work.
+  - *Alternative B: Runtime role permission rewrites in backend*: Over-complicated for an initial pilot, risks backend permission regression for admin users.
+  - *Alternative C: Configurable Frontend Pilot Mode Flag (VITE_PILOT_MODE) (Selected)*: A lightweight environment toggle (`IS_PILOT_MODE`) in `DashboardLayout.jsx` that presents only the core Complaint-to-Resolution navigation links to students, wardens, and staff, while keeping all routes compiled and available when set to `false`.
+- **Rationale**: Completely non-destructive, zero impact on backend business logic or test suites, instantaneous to toggle on or off, and provides a clear visual "Pilot Focus" indicator.
+- **Consequences**: Deferred modules remain fully accessible via direct URLs for administrators, but regular pilot participants see only their relevant complaint workflows.
+
+---
+
 ## Decision Log Template (For New Tasks)
 
 When making any new non-trivial decision, copy and fill out this template at the bottom of this file:
