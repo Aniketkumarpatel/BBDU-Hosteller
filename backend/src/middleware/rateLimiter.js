@@ -5,11 +5,11 @@ const isTest = () => process.env.NODE_ENV === 'test' || env.NODE_ENV === 'test';
 
 /**
  * Sensitive Authentication Endpoints Rate Limiter
- * 20 attempts per 15-minute window
+ * 20 attempts per 15-minute window in production; relaxed in development/test
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 20,
+  limit: env.NODE_ENV === 'production' ? 20 : 500,
   skip: isTest,
   standardHeaders: 'draft-8',
   legacyHeaders: false,

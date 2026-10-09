@@ -668,6 +668,7 @@ Frontend proxies `/api` to `http://localhost:5000` during development, so `VITE_
 | 2026-10-09 | Governance | Defined Section 17 First Pilot Focus (DEC-015), added Rule 13 Pull-Before-Push (DEC-016), reconciled Node.js version |
 | 2026-10-09 | Pilot Phase 1 | Implemented frontend Pilot Mode flag (VITE_PILOT_MODE) and navigation scoping in DashboardLayout (DEC-017) |
 | 2026-10-09 | Pilot Phase 2 | Streamlined and hardened the 5 core complaint screens (student submit, student verify/reopen, warden triage, staff work queue) and eliminated em dashes |
+| 2026-10-09 | Pilot Phase 3 | End-to-end runtime verification of full 12-step complaint loop across Student, Warden, and Staff personas (verify-pilot-complaint-loop.mjs); calibrated centralized auth rate limiter (DEC-018) |
 
 ---
 

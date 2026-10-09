@@ -235,6 +235,19 @@
 
 ---
 
+### DEC-018: End-to-End Runtime Pilot Loop Verification and Centralized Rate Limiter Calibration
+- **Date**: 2026-10-09
+- **Status**: Accepted
+- **Context**: DEC-015 defined the Phase 1 Complaint-to-Resolution pilot workflow across 5 core stages: Student Submission, Warden Triage and Assignment, Staff Acknowledgment and Start Work, Staff Resolution, Student Verification or Reopen Loop, and Warden Resolution Audit. We required automated verification that exercises the exact live HTTP API against a running database without mock shortcuts, and ensures authentication rate limiters do not deadlock development or continuous verification cycles.
+- **Alternatives Considered**:
+  - *Alternative A: Rely purely on unit and controller tests*: Unit tests test mocked controllers in isolation but do not test real session handoffs, live database transactions across roles, or network-level rate limiting behavior.
+  - *Alternative B: Manual QA via browser only*: Time-consuming, subjective, prone to human error, and lacks repeatable audit logging across multiple role personas.
+  - *Alternative C: Standalone Automated E2E Runtime Script with Centralized Rate Limiting Calibration (Selected)*: Created `backend/scripts/verify-pilot-complaint-loop.mjs` verifying all 12 operational steps across Student, Warden, and Staff personas against the live server. Calibrated `authLimiter` to centralize in `middleware/rateLimiter.js` and allow 500 requests per 15 minutes in non-production environments (retaining 20 in production).
+- **Rationale**: Proves 100% operational readiness of the core state machine (`SUBMITTED` -> `TRIAGED` -> `ASSIGNED` -> `ACKNOWLEDGED` -> `IN_PROGRESS` -> `STUDENT_VERIFICATION` -> `REOPENED` -> `IN_PROGRESS` -> `STUDENT_VERIFICATION` -> `CLOSED`). Eliminates false 429 lockouts during automated test cycles while maintaining production brute-force security.
+- **Consequences**: Continuous development verification can be executed in seconds. The full 12-step complaint loop is empirically proven functional before live pilot deployment.
+
+---
+
 ## Decision Log Template (For New Tasks)
 
 When making any new non-trivial decision, copy and fill out this template at the bottom of this file:
