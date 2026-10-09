@@ -2,16 +2,26 @@
 
 **Smart Hostel Management & Complaint Escalation Platform**
 
-> Status: **Step 16 – Student Services & Digital Communication Platform Complete**.
+> Status: **Step 18 Complete - Pilot Ready: Complaint-to-Resolution Core Focus**.
 
 ## Tech Stack
 
 | Layer | Tech |
 | :--- | :--- |
 | **Frontend** | React 19, Vite, Tailwind CSS v4, React Router 7, Axios |
-| **Backend** | Node.js 24, Express.js 5, MongoDB, Mongoose, bcryptjs, jsonwebtoken, zod, express-rate-limit |
+| **Backend** | Node.js >= 22 (LTS 22.x), Express.js 5, MongoDB, Mongoose, bcryptjs, jsonwebtoken, zod, express-rate-limit |
 | **Engines** | Central SLA & Escalation Engine, In-App Notification Engine, Work Order Engine, Preventive Maintenance Engine, Mess Management Engine, Housekeeping Engine, Visitor & Outpass Engine, AI Operational Intelligence Engine |
 | **Middleware** | cors, helmet, morgan, dotenv, rateLimit, requireAuth, requireRole |
+
+---
+
+## First Pilot: Complaint-to-Resolution Core Focus
+
+The platform architecture is complete across 24 subsystems and 37 models, but field deployment begins with a tightly scoped pilot in a single hostel or block:
+- **Core Workflow**: Student submits issue > Warden triages & assigns owner > Staff acknowledges & resolves > Student verifies fix or reopens > Warden monitors resolution trail.
+- **Proposed USP**: Every hostel complaint has an owner, a deadline, and a visible resolution trail.
+- **Deferred for Pilot (Deployment Boundary)**: Finance, asset scrap, mess menus, cleaning checklists, gate outpass, and the AI command center are deferred from pilot navigation to eliminate operational friction.
+- **Auto-Escalation**: Deferred until university executives confirm escalation authority and threshold expectations; notification reminders and countdown deadlines remain active.
 
 ---
 

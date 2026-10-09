@@ -196,6 +196,19 @@
 
 ---
 
+### DEC-015: First Pilot Scope - Single-Workflow Complaint-to-Resolution MVP
+- **Date**: 2026-10-09
+- **Status**: Accepted
+- **Context**: BBDU-Hosteller has 24 subsystems, 37 models, and passed 248 integration tests. However, software completeness does not prove user adoption, operational fit, or field reliability. A strategy decision was required on whether to launch the full platform simultaneously or validate a single core workflow first.
+- **Alternatives Considered**:
+  - *Alternative A: Full Platform Launch (All 24 Subsystems)*: Exposing finance, asset retirement, mess menus, cleaning checklists, outpasses, and the AI command center simultaneously. High risk of cognitive overload, training friction, incomplete adoption, and high support burden.
+  - *Alternative B: Multi-Hostel Campus Rollout of Core Complaints*: Rolling out complaints to all university hostels at once. High operational exposure if initial SLA settings or technician workflows have unforeseen defects.
+  - *Alternative C: Single-Workflow Pilot in One Hostel/Block (Selected)*: Constraining the initial pilot to one hostel or block, one warden, and a small technician group focusing exclusively on Complaint-to-Resolution (Submit > Triage/Assign > Work/Resolve > Student Verify/Reopen > Warden Oversight).
+- **Rationale**: Validates the core value proposition ("Every hostel complaint has an owner, a deadline, and a visible resolution trail") with minimal operational risk. Deferring automatic escalations prevents alarm fatigue among campus executives. Peripheral modules remain preserved in the codebase (deployment boundary, not code deletion) for subsequent rollout phases.
+- **Consequences**: Peripheral modules (finance, assets, cleaning, mess, outpass, AI command center) are deferred at the deployment boundary for pilot users. Baseline empirical metrics (time to acknowledge, time to resolve, reopened rates) must be gathered before expanding scope.
+
+---
+
 ## Decision Log Template (For New Tasks)
 
 When making any new non-trivial decision, copy and fill out this template at the bottom of this file:

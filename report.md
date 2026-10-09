@@ -624,10 +624,10 @@ Frontend proxies `/api` to `http://localhost:5000` during development, so `VITE_
 - All 37 Mongoose models and compound indexes validated
 - 248 backend tests (235 passed, 13 skipped, 0 failed)
 - Frontend builds cleanly with Vite (0 errors)
-- Dependency audit: 0 vulnerabilities in both workspaces
+- Dependencies installed in both backend and frontend workspaces (0 vulnerabilities)
+- Backend health tests passing (2/2)
 
 ### Requires Setup
-- `node_modules/` must be installed: `npm install` in both `backend/` and `frontend/`
 - MongoDB must be running locally or Atlas URI configured in `.env`
 - `.env` files must be created from `.env.example` templates
 
@@ -665,3 +665,67 @@ Frontend proxies `/api` to `http://localhost:5000` during development, so `VITE_
 | Initial | Step 17 | Security hardening and compliance |
 | Initial | Step 18 | Final production readiness audit |
 | 2026-10-08 | Docs | Created CLAUDE.md, report.md, architecture.md, decision.md |
+| 2026-10-09 | Pilot Plan | Defined Section 17 First Pilot Focus (Complaint-to-Resolution MVP), reconciled Node.js version, logged DEC-015 |
+
+---
+
+## 17. Proposed Product Focus and First Pilot
+
+### 17.1 Status & Purpose
+- **Status**: Proposed product direction, not yet validated with live hostel residents and staff.
+- **Strategic Reality**: The platform already contains 24 subsystems, 37 Mongoose models, and passes 248 integration tests. However, software completeness and test suites do not by themselves prove user adoption, operational workflow fit, or production readiness.
+- **Core Directive**: Pause platform expansion. Prioritize validating one single end-to-end operational loop in the real world before introducing additional features or external modules.
+
+### 17.2 First MVP Scope: Complaint-to-Resolution Loop
+Run a tightly scoped pilot in a single hostel or a single residential block with one assigned Warden and a small group of maintenance technicians (plumbers, electricians).
+
+The pilot workflow is strictly bounded to five steps:
+1. **Student Submission & Tracking**: A resident student submits a complaint with category and room/location, receiving an immediate tracking ticket (`CMP-YYYY-XXXXX`), and monitors status changes.
+2. **Warden Triage & Assignment**: The Warden reviews incoming tickets, assesses priority, assigns an owner (department and technician), and monitors overdue tasks.
+3. **Technician Progress & Resolution**: Assigned staff acknowledge receipt, update operational progress (`IN_PROGRESS`), and submit completion notes when physical work is finished.
+4. **Student Verification or Reopen**: The student resident explicitly confirms the physical fix (`CLOSED`) or reopens the complaint (`REOPENED`) with a mandatory explanation if the issue persists.
+5. **Warden Resolution Oversight**: The Warden reviews open, overdue, and resolved work through a focused dashboard with baseline resolution-time metrics.
+
+### 17.3 Operational SLA Guardrail
+- Use clear SLA resolution deadlines and notification reminders only.
+- Defer automatic multi-tier escalation to university executives (Chief Warden, Proctor) during the initial pilot until university leadership explicitly confirms jurisdictional responsibility, threshold hours, and notification expectations.
+
+### 17.4 Proposed Unique Selling Proposition (USP)
+> **"Every hostel complaint has an owner, a deadline, and a visible resolution trail, so students know what is happening and wardens can see what is stuck."**
+
+- Position the explainable operational health score (0-100) strictly as secondary diagnostic evidence once underlying operational records are reliable.
+- Do not lead pilot recruitment or university presentations with an "AI" claim. Trust must be earned through basic operational reliability first.
+
+### 17.5 Defer During the First Pilot (Deployment Boundary)
+To prevent cognitive overload, training friction, and administrative confusion, the following modules are explicitly deferred from the pilot cohort:
+- Hostel Finance and Expense Management
+- Asset Lifecycle and Scrap Disposal
+- Mess and Dining Timetable Management
+- Cleaning and Housekeeping Checklists
+- Gate Outpass and Visitor Logs
+- AI Command Center and Natural Language Q&A Assistant
+- Media file and photo attachments (unless pilot users flag this as a blocker)
+- SMS / WhatsApp external notifications
+- Real-time WebSocket push updates
+
+*Note: This is a deployment and learning boundary, not a recommendation to delete or refactor completed code. Completed modules remain fully preserved in the codebase for subsequent rollout phases.*
+
+### 17.6 Pilot Learning Measures & Baseline Metrics
+Track the following empirical indicators during the pilot cohort:
+1. **Complaint Volume**: Total tickets raised per week across pilot blocks.
+2. **Workflow Completion Rate**: Percentage of submitted complaints that successfully reach `CLOSED` or verified resolution.
+3. **Time to Acknowledge (TTA)**: Hours elapsed between student submission and staff acknowledgment.
+4. **Time to Resolve (TTR)**: Hours elapsed from assignment to technician resolution.
+5. **Overdue Rate**: Percentage of complaints that exceed their configured SLA window.
+6. **Reopened Rate**: Percentage of resolved complaints rejected by students during verification.
+7. **Staff Interaction Consistency**: Whether technicians consistently update statuses on their own devices or rely on Warden intervention.
+
+No target metrics or artificial benchmarks are assumed until an empirical pilot baseline is observed and reviewed with students, wardens, and staff.
+
+### 17.7 Go-Live Readiness Gate
+Before real student records and live university data are ingested:
+1. **Production Hosting**: Verified HTTPS endpoints and persistent server deployment.
+2. **Database Resilience**: Automated daily MongoDB backups with an active restore verification test.
+3. **Access Control & Privacy**: Verify cross-hostel data isolation and ensure government ID truncation (last 4 digits only).
+4. **Credential Rotation**: Completely disable demo accounts (`admin@bbdu.ac.in`) and shared passwords (`Password@123`) in production; enforce unique credentials for pilot users.
+5. **Documentation Alignment**: Reconcile all version references and steps across README, report, architecture, and decision logs.

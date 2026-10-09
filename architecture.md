@@ -2,7 +2,7 @@
 
 > **Purpose**: Complete technical architecture reference covering the full pipeline, folder structure, design patterns, tools, technologies, and the evolution decisions that shaped this system.
 
-> **Last Updated**: 2026-10-08
+> **Last Updated**: 2026-10-09
 
 ---
 
@@ -573,12 +573,18 @@ cd frontend && npm run build            # Outputs to frontend/dist/
 cd backend && npm start                 # node server.js (no --watch)
 ```
 
+### Pilot Deployment Boundary (Single-Hostel MVP)
+For the initial field pilot (DEC-015), the operational surface is constrained to a single hostel or block focusing solely on Complaint-to-Resolution:
+- Active: Authentication, Location hierarchy, Complaints lifecycle, SLA countdown & reminder warnings, Staff work logs, Student verification loop.
+- Deferred: Finance, Asset lifecycle, Mess menus, Cleaning tasks, Outpass passes, and AI Command Center are held behind navigation/deployment boundaries.
+
 ---
 
 ## 9. Key Technical Decisions That Shaped Performance
 
 | Decision | Why | Impact |
 |:---|:---|:---|
+| First pilot scoping | Validates core complaint workflow in 1 block | Reduces deployment risk, avoids premature executive escalation |
 | Express 5 over Express 4 | Native async error handling, cleaner middleware | Eliminates need for extensive asyncHandler usage |
 | Native node:test over Jest | Zero dependency bloat, faster boot, smaller install | 248 tests run without any test framework dependency |
 | Single scheduler loop | One setInterval instead of per-feature timers | No orphan timers, single monitoring point, idempotent |
