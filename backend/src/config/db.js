@@ -1,6 +1,14 @@
 import mongoose from 'mongoose';
+import dns from 'node:dns';
 import env from './env.js';
 import { initModels } from '../models/index.js';
+
+// Fix querySrv ECONNREFUSED issues on Windows local networks resolving MongoDB Atlas SRV
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {
+  // Fallback silently if custom DNS setting is restricted
+}
 
 const READY_STATES = Object.freeze({
   0: 'disconnected',

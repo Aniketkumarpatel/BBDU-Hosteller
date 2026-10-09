@@ -87,10 +87,10 @@ export default function ComplaintSlaSection({ complaint }) {
       if (!complaint.slaDueAt || complaint.slaStatus !== 'ACTIVE') {
         if (complaint.slaStatus === 'BREACHED') {
           setStatusCategory('BREACHED');
-          setTimeRemainingText('SLA Breached');
+          setTimeRemainingText('Overdue — deadline missed');
         } else {
           setStatusCategory('WITHIN_SLA');
-          setTimeRemainingText('SLA Pending Start');
+          setTimeRemainingText('Not started yet');
         }
         return;
       }
@@ -101,7 +101,7 @@ export default function ComplaintSlaSection({ complaint }) {
       if (diffMs <= 0 || complaint.slaStatus === 'BREACHED') {
         setStatusCategory('BREACHED');
         const overdueMs = Math.abs(diffMs || 0);
-        setTimeRemainingText(`BREACHED by ${formatDuration(overdueMs)}`);
+        setTimeRemainingText(`Overdue by ${formatDuration(overdueMs)}`);
         return;
       }
 
@@ -157,10 +157,10 @@ export default function ComplaintSlaSection({ complaint }) {
             <svg className="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Service Level Agreement (SLA) &amp; Escalation Tracker
+            Response deadline &amp; escalation status
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Real-time server-authoritative deadline tracking and multi-tier escalation hierarchy
+            How long remains before this issue must be fixed, and who is responsible if it runs over.
           </p>
         </div>
 
@@ -185,9 +185,9 @@ export default function ComplaintSlaSection({ complaint }) {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
               </span>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">Status: Within SLA Target</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">On track — within deadline</p>
                 <p className="text-xs text-emerald-700 mt-0.5">
-                  Complaint is operating within the expected resolution timeframe.
+                  This issue is being handled within the expected time. No action needed.
                 </p>
               </div>
             </div>
@@ -205,9 +205,9 @@ export default function ComplaintSlaSection({ complaint }) {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500" />
               </span>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-amber-800">Status: Near SLA Deadline</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-800">⚠ Due soon — time is running out</p>
                 <p className="text-xs text-amber-700 mt-0.5">
-                  Over 75% of resolution time elapsed. Auto-escalation will engage if unresolved before deadline.
+                  More than 75% of the allowed time has passed. If not resolved soon, it will be sent to a senior authority.
                 </p>
               </div>
             </div>
@@ -225,9 +225,9 @@ export default function ComplaintSlaSection({ complaint }) {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600" />
               </span>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-rose-800">Status: SLA Breached</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-rose-800">⚠ Deadline missed</p>
                 <p className="text-xs text-rose-700 mt-0.5">
-                  Resolution deadline exceeded without closure. Complaint automatically escalated to next authority.
+                  This issue was not fixed in time and has been automatically sent to a senior authority for follow-up.
                 </p>
               </div>
             </div>

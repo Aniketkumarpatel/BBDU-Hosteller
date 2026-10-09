@@ -112,13 +112,13 @@ export default function WorkOrderListPage() {
   };
 
   return (
-    <DashboardLayout title="Maintenance Work Orders" roleLabel={user?.role}>
+    <DashboardLayout title="Maintenance Tasks" roleLabel={user?.role}>
       <div className="space-y-6">
         {/* Top Actions Row */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs text-slate-500 sm:text-sm">
-              Track operational maintenance jobs, assign technician queues, and verify completion.
+              Track and manage hostel repair and maintenance tasks. Assign tasks to staff and mark them done.
             </p>
           </div>
 
@@ -128,7 +128,7 @@ export default function WorkOrderListPage() {
               onClick={() => setShowCreateModal(true)}
               className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700"
             >
-              <span>+</span> Create Work Order
+              <span>+</span> Create a task
             </button>
           )}
         </div>
@@ -235,8 +235,8 @@ export default function WorkOrderListPage() {
         <ErrorState message={error} onRetry={fetchWorkOrders} />
       ) : workOrders.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 p-12 text-center">
-          <p className="text-sm font-semibold text-slate-700">No maintenance work orders found</p>
-          <p className="mt-1 text-xs text-slate-500">Create a work order or adjust your filter selection.</p>
+          <p className="text-sm font-semibold text-slate-700">No maintenance tasks found</p>
+          <p className="mt-1 text-xs text-slate-500">Create a task or adjust your filters above.</p>
         </div>
       ) : (
         <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
@@ -244,13 +244,13 @@ export default function WorkOrderListPage() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-semibold">
                 <tr>
-                  <th className="px-4 py-3">Work Order ID</th>
+                  <th className="px-4 py-3">Task ID</th>
                   <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3">Hostel / Dept</th>
-                  <th className="px-4 py-3">Assigned Staff</th>
-                  <th className="px-4 py-3">Priority</th>
+                  <th className="px-4 py-3">Hostel / Team</th>
+                  <th className="px-4 py-3">Assigned to</th>
+                  <th className="px-4 py-3">Urgency</th>
                   <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">SLA Due</th>
+                  <th className="px-4 py-3">Due by</th>
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
@@ -353,8 +353,8 @@ export default function WorkOrderListPage() {
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
-            <h2 className="text-base font-bold text-slate-900">Create Maintenance Work Order</h2>
-            <p className="mt-1 text-xs text-slate-500">Initiate an operational repair or maintenance task.</p>
+            <h2 className="text-base font-bold text-slate-900">Create a maintenance task</h2>
+            <p className="mt-1 text-xs text-slate-500">Fill in the details below and assign it to a staff member.</p>
 
             <form onSubmit={handleCreateSubmit} className="mt-4 space-y-4">
               <div>
@@ -429,7 +429,7 @@ export default function WorkOrderListPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700">Assign To Staff (Optional)</label>
+                  <label className="block text-xs font-semibold text-slate-700">Assign to staff (optional)</label>
                   <select
                     value={formData.assignedTo}
                     onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
@@ -456,7 +456,7 @@ export default function WorkOrderListPage() {
                   disabled={creating}
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
                 >
-                  {creating ? 'Creating...' : 'Submit Work Order'}
+                  {creating ? 'Creating task…' : 'Create task'}
                 </button>
               </div>
             </form>

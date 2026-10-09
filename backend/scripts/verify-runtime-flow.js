@@ -34,7 +34,7 @@ async function runRuntimeVerification() {
     'Justice D.P. Gupta Girls Hostel',
     'Sheela Devi Girls Hostel',
     'Shail Devi Girls Hostel',
-    'BBDU Devi Girls Hostel',
+    'BBDU Girls Hostel',
   ];
 
   const actualHostelNames = hostels.map((h) => h.name);

@@ -111,7 +111,7 @@ export default function SubmitComplaintPage() {
     const validExts = ['jpg', 'jpeg', 'png', 'webp'];
 
     if (!ALLOWED_TYPES.includes(file.type) && !validExts.includes(ext)) {
-      setFileError('Please upload a JPG, JPEG, PNG, or WEBP image.');
+      setFileError('Please upload a JPG, JPEG, PNG, or WEBP image. Other file types are not supported.');
       setSelectedFile(null);
       setFilePreview(null);
       e.target.value = '';
@@ -119,7 +119,7 @@ export default function SubmitComplaintPage() {
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setFileError('Image is too large. Please choose a smaller image.');
+      setFileError('This image is too large (over 5 MB). Please choose a smaller photo and try again.');
       setSelectedFile(null);
       setFilePreview(null);
       e.target.value = '';
@@ -195,27 +195,27 @@ export default function SubmitComplaintPage() {
   const validate = () => {
     const errs = {};
     if (!title.trim()) {
-      errs.title = 'Title is required';
+      errs.title = 'Please enter a short title so we know what the issue is about.';
     } else if (title.trim().length < 3) {
-      errs.title = 'Title must be at least 3 characters';
+      errs.title = 'The title is too short — please add at least 3 characters.';
     } else if (title.trim().length > 120) {
-      errs.title = 'Title cannot exceed 120 characters';
+      errs.title = 'The title is too long. Please keep it under 120 characters.';
     }
 
     if (!description.trim()) {
-      errs.description = 'Description is required';
+      errs.description = 'Please describe the issue so the maintenance team knows what to fix.';
     } else if (description.trim().length < 10) {
-      errs.description = 'Please provide at least 10 characters describing the issue';
+      errs.description = 'Please add a bit more detail — at least 10 characters helps the team prepare.';
     } else if (description.trim().length > 2000) {
-      errs.description = 'Description cannot exceed 2000 characters';
+      errs.description = 'The description is too long. Please keep it under 2000 characters.';
     }
 
-    if (!category) errs.category = 'Category is required';
-    if (!issueType) errs.issueType = 'Issue type is required';
-    if (!priority) errs.priority = 'Priority is required';
+    if (!category) errs.category = 'Please pick a category for this issue.';
+    if (!issueType) errs.issueType = 'Please pick the type of issue.';
+    if (!priority) errs.priority = 'Please choose a priority level.';
 
     if (locationDescription && locationDescription.length > 200) {
-      errs.locationDescription = 'Location description cannot exceed 200 characters';
+      errs.locationDescription = 'Location note is too long. Please keep it under 200 characters.';
     }
 
     setFormErrors(errs);
@@ -224,35 +224,21 @@ export default function SubmitComplaintPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('[Complaint Debug] handleSubmit started', {
-      isAllocated,
-      missingLocationFields,
-      title,
-      description,
-      category,
-      issueType,
-      priority,
-      hasFile: !!selectedFile,
-    });
-
     setSubmitError(null);
 
     if (!isAllocated) {
-      const msg = `Room allocation required to submit complaint. Missing profile location data: ${missingLocationFields.join(', ')}. Please contact your hostel warden.`;
-      console.warn('[Complaint Debug] Submission blocked (Student unallocated):', msg);
+      const msg = `You need a room assignment before you can report an issue. Missing details: ${missingLocationFields.join(', ')}. Please contact your hostel warden to update your profile.`;
       setSubmitError(msg);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     if (!validate()) {
-      console.warn('[Complaint Debug] Form validation failed. Scroll to error banner.');
-      setSubmitError('Unable to submit complaint. Please check the highlighted fields and try again.');
+      setSubmitError('Some fields need attention — please check the highlighted messages below and try again.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    console.log('[Complaint Debug] Validation passed');
     setSubmitting(true);
 
     try {
@@ -270,7 +256,6 @@ export default function SubmitComplaintPage() {
         }
         formData.append('attachment', selectedFile);
         payload = formData;
-        console.log('[Complaint Debug] FormData payload created with attachment:', selectedFile.name);
       } else {
         payload = {
           title: title.trim(),
@@ -280,35 +265,29 @@ export default function SubmitComplaintPage() {
           priority,
           locationDescription: cleanLoc,
         };
-        console.log('[Complaint Debug] JSON payload created:', payload);
       }
 
-      console.log('[Complaint Debug] Sending POST /api/complaints request...');
       const res = await complaintService.submitComplaint(payload);
-      console.log('[Complaint Debug] Response received from server:', res);
 
       const complaintObj = res?.data || res;
       const complaintId = complaintObj?.complaintId || complaintObj?._id || res?.complaintId || res?._id;
 
       if ((res?.success || complaintId) && complaintId) {
-        console.log('[Complaint Debug] Navigating to complaint detail page:', `/student/complaints/${complaintId}`);
         navigate(`/student/complaints/${complaintId}`);
       } else {
-        const msg = res?.message || 'Failed to submit complaint. Please try again.';
-        console.error('[Complaint Debug] Server returned failure message:', msg);
+        const msg = res?.message || 'Something went wrong. Please try again in a moment.';
         setSubmitError(msg);
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } catch (err) {
-      console.error('[Complaint Debug] API/Network Error caught:', err);
       if (err?.response?.status === 401) {
-        setSubmitError('Your session has expired. Please sign in again.');
+        setSubmitError('Your session has expired. Please sign in again to continue.');
       } else {
         setSubmitError(
           err?.response?.data?.message ||
           err?.userMessage ||
           err.message ||
-          'Unable to submit complaint. Please check the highlighted fields and try again.'
+          'We could not send your report. Please check your connection and try again.'
         );
       }
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -319,9 +298,9 @@ export default function SubmitComplaintPage() {
 
   if (loadingProfile) {
     return (
-      <DashboardLayout title="Submit Maintenance Complaint" roleLabel="Student">
+      <DashboardLayout title="Report an Issue" roleLabel="Student">
         <div className="flex h-64 items-center justify-center">
-          <LoadingSpinner size="lg" message="Loading resident location details..." />
+          <LoadingSpinner size="lg" message="Loading your room details..." />
         </div>
       </DashboardLayout>
     );
@@ -341,19 +320,10 @@ export default function SubmitComplaintPage() {
   // Any logged-in student with hostel/user ID is considered allocated for frontend entry
   const isAllocated = !!(hostelVal || user?.hostelId || user?.studentId || user?._id);
 
-  useEffect(() => {
-    console.log('[Complaint Debug] Rendered SubmitComplaintPage state:', {
-      user: user ? { id: user._id || user.id, email: user.email, role: user.role } : null,
-      isAllocated,
-      missingLocationFields,
-      studentDetails,
-    });
-  }, [user, isAllocated, studentDetails]);
-
   return (
-    <DashboardLayout title="Submit Maintenance Complaint" roleLabel="Student">
+    <DashboardLayout title="Report an Issue" roleLabel="Student">
       <div className="mx-auto max-w-4xl space-y-6">
-        {/* Intro Banner */}
+        {/* Step intro */}
         <div className="rounded-xl border border-indigo-100 bg-gradient-to-r from-indigo-50/80 via-white to-indigo-50/40 p-5 shadow-xs">
           <div className="flex items-start gap-3">
             <div className="rounded-lg bg-indigo-600 p-2 text-white">
@@ -362,58 +332,58 @@ export default function SubmitComplaintPage() {
               </svg>
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900">Hostel Maintenance &amp; Grievance Redressal</h2>
+              <h2 className="text-base font-bold text-slate-900">Tell us what needs fixing in your room</h2>
               <p className="mt-0.5 text-xs text-slate-600">
-                Log maintenance requests for electrical, plumbing, sanitation, or internet issues. A unique complaint ID will be generated to track its resolution.
+                Fill in the three steps below. Once you submit, you will get a tracking number and can check the status anytime.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Accommodation Status Warning if unallocated */}
+        {/* Room not assigned warning */}
         {!isAllocated && (
-          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 shadow-2xs space-y-2">
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 shadow-2xs space-y-2" role="alert">
             <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
-              <svg className="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              Room Allocation Required to Submit Complaint
+              You need a room assignment before reporting an issue
             </div>
             <p className="text-slate-700">
-              Your student account does not have an active room assignment in the system. Complaints must be linked to a verified hostel room.
+              Your account does not have a room linked yet. Every report must be tied to a hostel room so the right team can respond.
             </p>
             <div className="flex items-center gap-2 pt-1">
-              <span className="font-semibold text-slate-700">Missing profile location data:</span>
+              <span className="font-semibold text-slate-700">Missing details:</span>
               <div className="flex flex-wrap gap-1">
                 {missingLocationFields.map((field) => (
                   <span key={field} className="rounded bg-rose-100 px-2 py-0.5 font-bold text-rose-800 text-[10px]">
-                    {field} Missing
+                    {field}
                   </span>
                 ))}
               </div>
             </div>
             <p className="text-[11px] text-slate-500 italic">
-              Please contact your hostel warden to update your profile room assignment.
+              Contact your hostel warden to get your room assigned, then come back here to report the issue.
             </p>
           </div>
         )}
 
         {submitError && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-700" role="alert">
             {submitError}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Section 1: Location Binding (Read-only verification) */}
+        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+          {/* Step 1: Your Room */}
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">1. Residential Location</h3>
-                <p className="text-xs text-slate-500">Auto-populated from your official student record</p>
+                <h3 className="text-sm font-bold text-slate-900">Step 1 — Your Room</h3>
+                <p className="text-xs text-slate-500">Filled in automatically from your student record</p>
               </div>
-              <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[10px] text-slate-600 font-semibold uppercase">
-                Verified Resident
+              <span className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                ✓ Verified
               </span>
             </div>
 
@@ -421,7 +391,7 @@ export default function SubmitComplaintPage() {
               <div className="rounded-lg bg-slate-50 p-3">
                 <span className="block text-[11px] font-medium text-slate-500">Hostel</span>
                 <span className="mt-1 block font-semibold text-slate-900 text-xs">
-                  {studentDetails?.hostel?.name || 'Unassigned'}
+                  {studentDetails?.hostel?.name || 'Not assigned'}
                 </span>
                 <span className="text-[10px] text-slate-400 uppercase font-mono">{studentDetails?.hostel?.code}</span>
               </div>
@@ -429,32 +399,34 @@ export default function SubmitComplaintPage() {
               <div className="rounded-lg bg-slate-50 p-3">
                 <span className="block text-[11px] font-medium text-slate-500">Block / Wing</span>
                 <span className="mt-1 block font-semibold text-slate-900 text-xs">
-                  {studentDetails?.block?.name || 'Unassigned'}
+                  {studentDetails?.block?.name || 'Not assigned'}
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono">{studentDetails?.block?.code}</span>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3">
-                <span className="block text-[11px] font-medium text-slate-500">Floor Level</span>
+                <span className="block text-[11px] font-medium text-slate-500">Floor</span>
                 <span className="mt-1 block font-semibold text-slate-900 text-xs">
-                  {studentDetails?.floor?.name || (studentDetails?.floor?.floorNumber !== undefined ? `Floor ${studentDetails.floor.floorNumber}` : 'Unassigned')}
+                  {studentDetails?.floor?.name ||
+                    (studentDetails?.floor?.floorNumber !== undefined
+                      ? `Floor ${studentDetails.floor.floorNumber}`
+                      : 'Not assigned')}
                 </span>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-3">
                 <span className="block text-[11px] font-medium text-slate-500">Room Number</span>
                 <span className="mt-1 block font-bold text-indigo-700 text-xs font-mono">
-                  {studentDetails?.room ? `Room ${studentDetails.room.roomNumber}` : 'Unassigned'}
+                  {studentDetails?.room ? `Room ${studentDetails.room.roomNumber}` : 'Not assigned'}
                 </span>
               </div>
             </div>
 
-            {/* Additional location notes */}
+            {/* Exact spot in the room */}
             <div className="mt-4">
               <FormField
-                label="Specific Location Notes (Optional)"
+                label="Where exactly in the room? (Optional)"
                 error={formErrors.locationDescription}
-                helpText="e.g. Near window switchboard, balcony, attached washroom, study desk corner."
+                helpText="Helps the technician find the problem faster. e.g. Near the window, above the study desk, in the attached bathroom."
               >
                 <input
                   type="text"
@@ -468,16 +440,16 @@ export default function SubmitComplaintPage() {
             </div>
           </div>
 
-          {/* Section 2: Complaint Details */}
+          {/* Step 2: What is the issue? */}
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
             <div className="border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">2. Issue Details</h3>
-              <p className="text-xs text-slate-500">Select category, issue type, and descriptive details</p>
+              <h3 className="text-sm font-bold text-slate-900">Step 2 — What is the issue?</h3>
+              <p className="text-xs text-slate-500">Choose the area and type of problem, then describe it</p>
             </div>
 
-            {/* Category & Issue Type Row */}
+            {/* Category & Issue Type */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField label="Category" required error={formErrors.category}>
+              <FormField label="Area of the problem" required error={formErrors.category}>
                 <select
                   value={category}
                   onChange={(e) => handleCategoryChange(e.target.value)}
@@ -496,7 +468,7 @@ export default function SubmitComplaintPage() {
                 </select>
               </FormField>
 
-              <FormField label="Issue Type" required error={formErrors.issueType}>
+              <FormField label="Specific problem" required error={formErrors.issueType}>
                 <select
                   value={issueType}
                   onChange={(e) => setIssueType(e.target.value)}
@@ -511,15 +483,44 @@ export default function SubmitComplaintPage() {
               </FormField>
             </div>
 
-            {/* Priority Selection */}
+            {/* Urgency */}
             <div>
-              <FormField label="Priority Level" required error={formErrors.priority}>
+              <FormField
+                label="How urgent is this?"
+                required
+                error={formErrors.priority}
+                helpText="Choose honestly — urgent reports are handled first."
+              >
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {[
-                    { value: 'LOW', label: 'Low', desc: 'Minor inconvenience', color: 'border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-50/50' },
-                    { value: 'MEDIUM', label: 'Medium', desc: 'Normal routine impact', color: 'border-slate-300 peer-checked:border-emerald-600 peer-checked:bg-emerald-50/50' },
-                    { value: 'HIGH', label: 'High', desc: 'Disrupts daily living', color: 'border-slate-300 peer-checked:border-amber-600 peer-checked:bg-amber-50/50' },
-                    { value: 'CRITICAL', label: 'Critical', desc: 'Hazard or emergency', color: 'border-slate-300 peer-checked:border-rose-600 peer-checked:bg-rose-50/50' },
+                    {
+                      value: 'LOW',
+                      label: 'Low',
+                      desc: 'Minor inconvenience, can wait',
+                      icon: '🟦',
+                      color: 'border-slate-300 peer-checked:border-blue-600 peer-checked:bg-blue-50/50',
+                    },
+                    {
+                      value: 'MEDIUM',
+                      label: 'Medium',
+                      desc: 'Affects daily routine',
+                      icon: '🟩',
+                      color: 'border-slate-300 peer-checked:border-emerald-600 peer-checked:bg-emerald-50/50',
+                    },
+                    {
+                      value: 'HIGH',
+                      label: 'High',
+                      desc: 'Hard to live without fixing',
+                      icon: '🟧',
+                      color: 'border-slate-300 peer-checked:border-amber-600 peer-checked:bg-amber-50/50',
+                    },
+                    {
+                      value: 'CRITICAL',
+                      label: 'Critical',
+                      desc: 'Hazard or emergency',
+                      icon: '🟥',
+                      color: 'border-slate-300 peer-checked:border-rose-600 peer-checked:bg-rose-50/50',
+                    },
                   ].map((p) => (
                     <label key={p.value} className="relative block cursor-pointer">
                       <input
@@ -531,7 +532,8 @@ export default function SubmitComplaintPage() {
                         className="peer sr-only"
                       />
                       <div className={`rounded-lg border p-3 text-center transition ${p.color}`}>
-                        <span className="block text-xs font-bold text-slate-800">{p.label}</span>
+                        <span className="block text-base">{p.icon}</span>
+                        <span className="block text-xs font-bold text-slate-800 mt-0.5">{p.label}</span>
                         <span className="block text-[10px] text-slate-500 mt-0.5">{p.desc}</span>
                       </div>
                     </label>
@@ -540,24 +542,29 @@ export default function SubmitComplaintPage() {
               </FormField>
             </div>
 
-            {/* Title */}
-            <FormField label="Complaint Title" required error={formErrors.title}>
+            {/* Short Title */}
+            <FormField
+              label="Short title for your issue"
+              required
+              error={formErrors.title}
+              helpText="One sentence that says what is wrong."
+            >
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={120}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-hidden"
-                placeholder="e.g. Ceiling fan in room 101 vibrating loudly and stopped rotating"
+                placeholder="e.g. Ceiling fan in room 101 stopped working"
               />
             </FormField>
 
-            {/* Description */}
+            {/* Full Description */}
             <FormField
-              label="Detailed Description"
+              label="Describe the problem in detail"
               required
               error={formErrors.description}
-              helpText="Please describe what happened, when it started, and any symptoms."
+              helpText="Mention when it started, how often it happens, and any other details. This helps the technician bring the right tools."
             >
               <textarea
                 rows={4}
@@ -565,7 +572,7 @@ export default function SubmitComplaintPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={2000}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-hidden"
-                placeholder="Explain the problem in detail so the technician brings the correct tools and replacement parts..."
+                placeholder="e.g. The fan stopped rotating yesterday evening. It makes a humming sound but blades do not move..."
               />
               <div className="mt-1 text-right text-[10px] text-slate-400">
                 {description.length} / 2000 characters
@@ -573,15 +580,15 @@ export default function SubmitComplaintPage() {
             </FormField>
           </div>
 
-          {/* Section 3: Photo Attachment (Optional) */}
+          {/* Step 3: Add a photo (optional) */}
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
             <div className="border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">3. Photo Attachment (Optional)</h3>
-              <p className="text-xs text-slate-500">Attach a photo of the defect or issue to help maintenance staff prepare equipment</p>
+              <h3 className="text-sm font-bold text-slate-900">Step 3 — Add a photo (optional)</h3>
+              <p className="text-xs text-slate-500">A clear photo helps the team arrive prepared with the right parts</p>
             </div>
 
             {fileError && (
-              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
+              <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700" role="alert">
                 {fileError}
               </div>
             )}
@@ -597,7 +604,7 @@ export default function SubmitComplaintPage() {
                       htmlFor="attachment-upload"
                       className="relative cursor-pointer rounded-md font-bold text-indigo-600 focus-within:outline-hidden hover:text-indigo-500"
                     >
-                      <span>Upload an image</span>
+                      <span>Choose a photo</span>
                       <input
                         id="attachment-upload"
                         name="attachment"
@@ -607,10 +614,10 @@ export default function SubmitComplaintPage() {
                         className="sr-only"
                       />
                     </label>
-                    <p className="pl-1">or drag and drop</p>
+                    <p className="pl-1">or drag and drop here</p>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    JPG, JPEG, PNG, or WEBP up to 5MB
+                    JPG, PNG, or WEBP · up to 5 MB
                   </p>
                 </div>
               </div>
@@ -621,7 +628,7 @@ export default function SubmitComplaintPage() {
                     {filePreview ? (
                       <img
                         src={filePreview}
-                        alt="Selected Preview"
+                        alt="Preview of your chosen photo"
                         className="h-16 w-16 rounded-lg object-cover border border-slate-200 shadow-2xs"
                       />
                     ) : (
@@ -645,25 +652,26 @@ export default function SubmitComplaintPage() {
                     <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                    Remove
+                    Remove photo
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Form Actions */}
+          {/* Submit */}
           <div className="flex items-center justify-between border-t border-slate-200 pt-4">
             <Link
               to="/student/complaints"
               className="text-xs font-medium text-slate-600 hover:text-slate-900"
             >
-              &larr; Cancel and back to My Complaints
+              ← Cancel and go back
             </Link>
 
             <div className="flex flex-col items-end gap-1">
               <button
                 type="submit"
+                id="submit-complaint-btn"
                 disabled={submitting}
                 className={`inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition cursor-pointer ${
                   !isAllocated
@@ -674,15 +682,15 @@ export default function SubmitComplaintPage() {
                 {submitting ? (
                   <>
                     <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Submitting Ticket...
+                    Sending your report…
                   </>
                 ) : (
-                  'Submit Complaint'
+                  'Send my report →'
                 )}
               </button>
               {!isAllocated && (
                 <span className="text-[11px] font-medium text-amber-700">
-                  Room allocation required to submit complaint
+                  Room assignment needed before sending
                 </span>
               )}
             </div>

@@ -106,7 +106,7 @@ export default function DashboardLayout({ title, roleLabel, children }) {
                     }`
                   }
                 >
-                  + Submit Complaint
+                  + Report an issue
                 </NavLink>
                 {!IS_PILOT_MODE && (
                   <>

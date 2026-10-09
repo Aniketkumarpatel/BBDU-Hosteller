@@ -87,7 +87,7 @@ export default function WardenDashboard() {
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                   </svg>
-                  Complaints Triage Queue
+                  Review &amp; assign issues
                 </Link>
                 {!IS_PILOT_MODE && (
                   <>
@@ -282,19 +282,19 @@ export default function WardenDashboard() {
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-lg bg-indigo-50/70 p-3 text-center border border-indigo-100">
                 <span className="text-xl font-bold text-indigo-700">{data?.slaStats?.active ?? 0}</span>
-                <span className="block text-[11px] font-semibold text-indigo-900 mt-0.5">Active SLAs</span>
+                <span className="block text-[11px] font-semibold text-indigo-900 mt-0.5">On time</span>
               </div>
               <div className="rounded-lg bg-amber-50/70 p-3 text-center border border-amber-100">
                 <span className="text-xl font-bold text-amber-700">{data?.slaStats?.dueSoon ?? 0}</span>
-                <span className="block text-[11px] font-semibold text-amber-900 mt-0.5">Near Deadline (&lt;4h)</span>
+                <span className="block text-[11px] font-semibold text-amber-900 mt-0.5">Due in under 4h</span>
               </div>
               <div className="rounded-lg bg-rose-50/70 p-3 text-center border border-rose-100">
                 <span className="text-xl font-bold text-rose-700">{data?.slaStats?.breached ?? 0}</span>
-                <span className="block text-[11px] font-semibold text-rose-900 mt-0.5">SLA Breached</span>
+                <span className="block text-[11px] font-semibold text-rose-900 mt-0.5">Overdue (deadline missed)</span>
               </div>
               <div className="rounded-lg bg-purple-50/70 p-3 text-center border border-purple-100">
                 <span className="text-xl font-bold text-purple-700">{data?.slaStats?.escalated ?? 0}</span>
-                <span className="block text-[11px] font-semibold text-purple-900 mt-0.5">Escalated Tickets</span>
+                <span className="block text-[11px] font-semibold text-purple-900 mt-0.5">Escalated issues</span>
               </div>
             </div>
           </div>

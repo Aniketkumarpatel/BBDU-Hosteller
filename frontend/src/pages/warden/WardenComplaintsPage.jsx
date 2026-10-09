@@ -6,6 +6,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner.jsx';
 import ErrorState from '../../components/common/ErrorState.jsx';
 import DashboardCard from '../../components/common/DashboardCard.jsx';
 import SlaBadge from '../../components/sla/SlaBadge.jsx';
+import { COMPLAINT_STATUS_LABELS } from '../../utils/statusLabels.js';
 
 export default function WardenComplaintsPage() {
   const [complaints, setComplaints] = useState([]);
@@ -37,10 +38,10 @@ export default function WardenComplaintsPage() {
       if (res.success && res.data) {
         setComplaints(res.data);
       } else {
-        setError(res.message || 'Failed to load complaints');
+        setError(res.message || 'Could not load issues. Please try again.');
       }
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Error fetching complaints');
+      setError(err?.response?.data?.message || err.message || 'Something went wrong fetching issues.');
     } finally {
       setLoading(false);
     }
@@ -56,53 +57,54 @@ export default function WardenComplaintsPage() {
   };
 
   const getPriorityBadge = (p) => {
-    const map = {
-      LOW: 'bg-blue-100 text-blue-700',
-      MEDIUM: 'bg-emerald-100 text-emerald-700',
-      HIGH: 'bg-amber-100 text-amber-700',
+    const colorMap = {
+      LOW:      'bg-blue-100 text-blue-700',
+      MEDIUM:   'bg-emerald-100 text-emerald-700',
+      HIGH:     'bg-amber-100 text-amber-700',
       CRITICAL: 'bg-rose-100 text-rose-700 font-bold',
     };
+    const shortLabel = { LOW: 'Low', MEDIUM: 'Medium', HIGH: 'High', CRITICAL: 'Critical' };
     return (
-      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${map[p] || 'bg-slate-100 text-slate-700'}`}>
-        {p}
+      <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${colorMap[p] || 'bg-slate-100 text-slate-700'}`}>
+        {shortLabel[p] ?? p}
       </span>
     );
   };
 
   const getStatusBadge = (s) => {
-    const map = {
-      SUBMITTED: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-      TRIAGED: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-      ASSIGNED: 'bg-blue-50 text-blue-700 border-blue-200',
-      ACKNOWLEDGED: 'bg-sky-50 text-sky-700 border-sky-200',
-      IN_PROGRESS: 'bg-amber-50 text-amber-700 border-amber-200',
+    const colorMap = {
+      SUBMITTED:            'bg-indigo-50 text-indigo-700 border-indigo-200',
+      TRIAGED:              'bg-cyan-50 text-cyan-700 border-cyan-200',
+      ASSIGNED:             'bg-blue-50 text-blue-700 border-blue-200',
+      ACKNOWLEDGED:         'bg-sky-50 text-sky-700 border-sky-200',
+      IN_PROGRESS:          'bg-amber-50 text-amber-700 border-amber-200',
       STUDENT_VERIFICATION: 'bg-purple-100 text-purple-800 border-purple-300 font-bold',
-      RESOLVED: 'bg-purple-50 text-purple-700 border-purple-200',
-      CLOSED: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-      REOPENED: 'bg-rose-50 text-rose-700 border-rose-300 font-bold',
+      RESOLVED:             'bg-purple-50 text-purple-700 border-purple-200',
+      CLOSED:               'bg-emerald-50 text-emerald-800 border-emerald-200',
+      REOPENED:             'bg-rose-50 text-rose-700 border-rose-300 font-bold',
     };
     return (
-      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${map[s] || 'bg-slate-50 text-slate-700'}`}>
+      <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${colorMap[s] || 'bg-slate-50 text-slate-700'}`}>
         <span className="h-1.5 w-1.5 rounded-full bg-current" />
-        {s?.replace(/_/g, ' ')}
+        {COMPLAINT_STATUS_LABELS[s] ?? s?.replace(/_/g, ' ')}
       </span>
     );
   };
 
-  const countTotal = complaints.length;
-  const countPendingTriage = complaints.filter((c) => c.status === 'SUBMITTED').length;
-  const countAssigned = complaints.filter((c) => ['TRIAGED', 'ASSIGNED', 'ACKNOWLEDGED'].includes(c.status)).length;
-  const countInProgress = complaints.filter((c) => c.status === 'IN_PROGRESS').length;
+  const countTotal           = complaints.length;
+  const countNeedsReview     = complaints.filter((c) => c.status === 'SUBMITTED').length;
+  const countAssigned        = complaints.filter((c) => ['TRIAGED', 'ASSIGNED', 'ACKNOWLEDGED'].includes(c.status)).length;
+  const countInProgress      = complaints.filter((c) => c.status === 'IN_PROGRESS').length;
 
   return (
-    <DashboardLayout title="Hostel Complaints Management" roleLabel="Warden">
+    <DashboardLayout title="Review & Assign Issues" roleLabel="Warden">
       <div className="space-y-6">
-        {/* KPI Cards Row */}
+        {/* Summary cards */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <DashboardCard
-            title="Total Complaints"
+            title="Total issues"
             value={countTotal}
-            subtitle="Registered in this hostel"
+            subtitle="Reported in this hostel"
             color="indigo"
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -111,9 +113,9 @@ export default function WardenComplaintsPage() {
             }
           />
           <DashboardCard
-            title="Pending Triage"
-            value={countPendingTriage}
-            subtitle="Awaiting classification"
+            title="Needs your review"
+            value={countNeedsReview}
+            subtitle="Not yet assigned to staff"
             color="rose"
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -122,9 +124,9 @@ export default function WardenComplaintsPage() {
             }
           />
           <DashboardCard
-            title="Assigned / Ready"
+            title="Assigned to staff"
             value={countAssigned}
-            subtitle="Under staff routing"
+            subtitle="Staff notified"
             color="amber"
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -133,9 +135,9 @@ export default function WardenComplaintsPage() {
             }
           />
           <DashboardCard
-            title="In Progress"
+            title="Being fixed"
             value={countInProgress}
-            subtitle="Active technician resolution"
+            subtitle="Staff is working on it"
             color="emerald"
             icon={
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -145,15 +147,15 @@ export default function WardenComplaintsPage() {
           />
         </div>
 
-        {/* Filters and Search Bar */}
+        {/* Filters and search */}
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-          <form onSubmit={(e) => e.preventDefault()} className="grid grid-cols-1 gap-3 sm:grid-cols-6">
+          <form onSubmit={handleSearchSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-6">
             <div className="sm:col-span-2">
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search ticket ID or issue title..."
+                placeholder="Search by reference number or issue title…"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
               />
             </div>
@@ -163,17 +165,18 @@ export default function WardenComplaintsPage() {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
+                aria-label="Filter by status"
               >
-                <option value="">All Statuses</option>
-                <option value="SUBMITTED">SUBMITTED</option>
-                <option value="TRIAGED">TRIAGED</option>
-                <option value="ASSIGNED">ASSIGNED</option>
-                <option value="ACKNOWLEDGED">ACKNOWLEDGED</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                <option value="STUDENT_VERIFICATION">STUDENT_VERIFICATION</option>
-                <option value="REOPENED">REOPENED</option>
-                <option value="RESOLVED">RESOLVED</option>
-                <option value="CLOSED">CLOSED</option>
+                <option value="">All statuses</option>
+                <option value="SUBMITTED">Waiting to be reviewed</option>
+                <option value="TRIAGED">Reviewed &amp; being assigned</option>
+                <option value="ASSIGNED">Assigned to staff</option>
+                <option value="ACKNOWLEDGED">Staff has picked this up</option>
+                <option value="IN_PROGRESS">Being fixed</option>
+                <option value="STUDENT_VERIFICATION">Is it fixed? (needs student reply)</option>
+                <option value="REOPENED">Reopened</option>
+                <option value="RESOLVED">Fixed</option>
+                <option value="CLOSED">Closed</option>
               </select>
             </div>
 
@@ -182,12 +185,13 @@ export default function WardenComplaintsPage() {
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none"
+                aria-label="Filter by urgency"
               >
-                <option value="">All Priorities</option>
-                <option value="LOW">LOW</option>
-                <option value="MEDIUM">MEDIUM</option>
-                <option value="HIGH">HIGH</option>
-                <option value="CRITICAL">CRITICAL</option>
+                <option value="">All urgency levels</option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="CRITICAL">Critical</option>
               </select>
             </div>
 
@@ -196,12 +200,13 @@ export default function WardenComplaintsPage() {
                 value={slaFilter}
                 onChange={(e) => setSlaFilter(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-indigo-500 focus:outline-none font-medium text-slate-700"
+                aria-label="Filter by deadline status"
               >
-                <option value="">All SLA States</option>
-                <option value="ACTIVE">SLA Active</option>
-                <option value="DUE_SOON">Due Soon (&lt; 4h)</option>
-                <option value="BREACHED">SLA Breached</option>
-                <option value="ESCALATED">Escalated</option>
+                <option value="">All deadline states</option>
+                <option value="ACTIVE">On time</option>
+                <option value="DUE_SOON">Due in under 4 hours</option>
+                <option value="BREACHED">Overdue (deadline missed)</option>
+                <option value="ESCALATED">Escalated to authority</option>
               </select>
             </div>
 
@@ -210,7 +215,7 @@ export default function WardenComplaintsPage() {
                 type="submit"
                 className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700 transition"
               >
-                Filter
+                Search
               </button>
               {(search || statusFilter || priorityFilter || categoryFilter || slaFilter) && (
                 <button
@@ -224,49 +229,49 @@ export default function WardenComplaintsPage() {
                   }}
                   className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
                 >
-                  Reset
+                  Clear
                 </button>
               )}
             </div>
           </form>
         </div>
 
-        {/* Complaints Table */}
+        {/* Issues table */}
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h2 className="text-base font-bold text-slate-900">Hostel Complaints Roster</h2>
-              <p className="text-xs text-slate-500">Real-time status of student tickets assigned to this residence</p>
+              <h2 className="text-base font-bold text-slate-900">Hostel issues list</h2>
+              <p className="text-xs text-slate-500">Tap "Review &amp; assign" to read the full issue and assign it to a staff member</p>
             </div>
             <span className="text-xs font-mono text-slate-500">
-              {complaints.length} complaint{complaints.length === 1 ? '' : 's'}
+              {complaints.length} issue{complaints.length === 1 ? '' : 's'}
             </span>
           </div>
 
           {loading ? (
             <div className="flex h-48 items-center justify-center">
-              <LoadingSpinner size="md" message="Loading complaints..." />
+              <LoadingSpinner size="md" message="Loading issues…" />
             </div>
           ) : error ? (
             <div className="py-6">
-              <ErrorState title="Error fetching complaints" message={error} onRetry={fetchComplaints} />
+              <ErrorState title="Could not load issues" message={error} onRetry={fetchComplaints} />
             </div>
           ) : complaints.length === 0 ? (
             <div className="mt-6 rounded-lg border border-dashed border-slate-200 p-8 text-center text-xs text-slate-500">
-              No complaints found matching the criteria.
+              No issues found for the selected filters.
             </div>
           ) : (
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
                   <tr>
-                    <th className="px-4 py-3">Ticket ID</th>
-                    <th className="px-4 py-3">Title &amp; Issue</th>
+                    <th className="px-4 py-3">Ref No.</th>
+                    <th className="px-4 py-3">Issue</th>
                     <th className="px-4 py-3">Student &amp; Room</th>
-                    <th className="px-4 py-3">Priority</th>
-                    <th className="px-4 py-3">Assigned Staff</th>
+                    <th className="px-4 py-3">Urgency</th>
+                    <th className="px-4 py-3">Assigned staff</th>
                     <th className="px-4 py-3">Status</th>
-                    <th className="px-4 py-3">Submitted</th>
+                    <th className="px-4 py-3">Reported on</th>
                     <th className="px-4 py-3 text-right">Action</th>
                   </tr>
                 </thead>
@@ -296,7 +301,7 @@ export default function WardenComplaintsPage() {
                             <span className="block text-[10px] text-slate-400 font-mono">{c.assignedTo.employeeId || 'Staff'}</span>
                           </div>
                         ) : (
-                          <span className="text-amber-600 italic text-[11px]">Unassigned</span>
+                          <span className="text-amber-600 italic text-[11px]">Not assigned yet</span>
                         )}
                       </td>
                       <td className="px-4 py-3.5 space-y-1">
@@ -311,14 +316,16 @@ export default function WardenComplaintsPage() {
                         />
                       </td>
                       <td className="px-4 py-3.5 text-slate-500 whitespace-nowrap">
-                        {new Date(c.submittedAt || c.createdAt).toLocaleDateString()}
+                        {new Date(c.submittedAt || c.createdAt).toLocaleDateString('en-IN', {
+                          day: 'numeric', month: 'short', year: 'numeric',
+                        })}
                       </td>
                       <td className="px-4 py-3.5 text-right whitespace-nowrap">
                         <Link
                           to={`/warden/complaints/${c._id}`}
                           className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition"
                         >
-                          Manage &rarr;
+                          Review &amp; assign &rarr;
                         </Link>
                       </td>
                     </tr>
