@@ -56,6 +56,12 @@ export default function DashboardLayout({ title, roleLabel, children }) {
               <div className="text-sm font-semibold text-slate-800">{user?.name}</div>
               <div className="text-xs text-slate-500">{user?.email}</div>
             </div>
+            <Link
+              to="/change-password"
+              className="hidden text-xs font-medium text-slate-500 hover:text-slate-800 sm:inline"
+            >
+              Change password
+            </Link>
             <button
               onClick={handleLogout}
               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 hover:text-slate-900"
@@ -190,6 +196,20 @@ export default function DashboardLayout({ title, roleLabel, children }) {
                 >
                   Hostel Complaints
                 </NavLink>
+                {user?.role === 'WARDEN' && (
+                  <NavLink
+                    to="/warden/people"
+                    className={({ isActive }) =>
+                      `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                      }`
+                    }
+                  >
+                    Residents &amp; Staff
+                  </NavLink>
+                )}
                 {!IS_PILOT_MODE && (
                   <>
                     <NavLink

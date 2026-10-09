@@ -25,8 +25,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const user = await login({ email: email.trim(), password });
-      // Redirect to origin or appropriate role dashboard
-      const target = location.state?.from?.pathname || getDashboardPathForRole(user.role);
+      // Redirect to origin or appropriate role dashboard; a temporary password must be replaced first
+      const target = user.mustChangePassword
+        ? '/change-password'
+        : location.state?.from?.pathname || getDashboardPathForRole(user.role);
       navigate(target, { replace: true });
     } catch (err) {
       setError(err.userMessage || err.message || 'Invalid email or password.');

@@ -12,6 +12,9 @@ import FilterSelect from '../../components/common/FilterSelect.jsx';
 import StatusBadge from '../../components/common/StatusBadge.jsx';
 import Modal from '../../components/common/Modal.jsx';
 import ConfirmationDialog from '../../components/common/ConfirmationDialog.jsx';
+import TemporaryPasswordModal from '../../components/common/TemporaryPasswordModal.jsx';
+import { resetUserPassword } from '../../services/auth.service.js';
+import { getPasswordPolicyError, PASSWORD_POLICY_HINT } from '../../utils/passwordPolicy.js';
 import FormField from '../../components/common/FormField.jsx';
 import LoadingSpinner from '../../components/common/LoadingSpinner.jsx';
 import ErrorState from '../../components/common/ErrorState.jsx';
@@ -62,6 +65,11 @@ export default function UserManagementPage() {
   const [userToDelete, setUserToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Password reset state (DEC-022)
+  const [resetTarget, setResetTarget] = useState(null);
+  const [resetting, setResetting] = useState(false);
+  const [issuedPassword, setIssuedPassword] = useState(null);
+
   const fetchData = async () => {
     setLoading(true);
     setError(null);
@@ -75,12 +83,17 @@ export default function UserManagementPage() {
         departmentService.getAllDepartments(),
       ]);
 
-      if (uRes.success) setUsers(uRes.data);
-      if (hRes.success) setHostels(hRes.data);
-      if (bRes.success) setBlocks(bRes.data);
-      if (fRes.success) setFloors(fRes.data);
-      if (rRes.success) setRooms(rRes.data);
-      if (dRes.success) setDepartments(dRes.data);
+      // The admin API wraps each list ({ users, total }, { hostels }, ...) and users come from
+      // sanitizeUser with `id`; this page works with plain arrays and `_id` rows
+      const toList = (payload, key) => (Array.isArray(payload) ? payload : payload?.[key] || []);
+      if (uRes.success) {
+        setUsers(toList(uRes.data, 'users').map((u) => ({ ...u, _id: u._id ?? u.id })));
+      }
+      if (hRes.success) setHostels(toList(hRes.data, 'hostels'));
+      if (bRes.success) setBlocks(toList(bRes.data, 'blocks'));
+      if (fRes.success) setFloors(toList(fRes.data, 'floors'));
+      if (rRes.success) setRooms(toList(rRes.data, 'rooms'));
+      if (dRes.success) setDepartments(toList(dRes.data, 'departments'));
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Error loading users');
     } finally {
@@ -173,12 +186,13 @@ export default function UserManagementPage() {
     if (!formData.name.trim()) errs.name = 'Full name is required';
     if (!editingUser) {
       if (!formData.email.trim()) errs.email = 'Email is required';
-      if (!formData.password || formData.password.length < 8) {
-        errs.password = 'Password must be at least 8 characters';
+      if (!formData.password) {
+        errs.password = 'Initial password is required';
       }
     }
-    if (formData.password && formData.password.length < 8) {
-      errs.password = 'Password must be at least 8 characters';
+    if (formData.password) {
+      const policyError = getPasswordPolicyError(formData.password);
+      if (policyError) errs.password = policyError;
     }
     setFormErrors(errs);
     return Object.keys(errs).length === 0;
@@ -225,6 +239,35 @@ export default function UserManagementPage() {
       fetchData();
     } catch (err) {
       setActionError(err?.response?.data?.message || err.message || 'Status toggle failed');
+    }
+  };
+
+  const handleOpenReset = (user) => {
+    setActionError(null);
+    setResetTarget(user);
+  };
+
+  const handleConfirmReset = async () => {
+    if (!resetTarget) return;
+    setResetting(true);
+    setActionError(null);
+    try {
+      const res = await resetUserPassword(resetTarget._id);
+      if (res.success && res.data) {
+        setIssuedPassword({
+          name: resetTarget.name,
+          email: resetTarget.email,
+          temporaryPassword: res.data.temporaryPassword,
+        });
+        fetchData();
+      } else {
+        setActionError(res.message || 'Password reset failed');
+      }
+    } catch (err) {
+      setActionError(err?.response?.data?.message || err.message || 'Password reset failed');
+    } finally {
+      setResetting(false);
+      setResetTarget(null);
     }
   };
 
@@ -344,6 +387,18 @@ export default function UserManagementPage() {
               </svg>
             )}
           </button>
+          {row._id !== currentUser?.id && row.isActive && (
+            <button
+              type="button"
+              onClick={() => handleOpenReset(row)}
+              className="rounded p-1 text-slate-500 hover:bg-amber-50 hover:text-amber-600"
+              title="Reset Password"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+              </svg>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => handleOpenEdit(row)}
@@ -481,6 +536,11 @@ export default function UserManagementPage() {
               label={editingUser ? 'Password (Leave blank to keep current)' : 'Initial Password'}
               required={!editingUser}
               error={formErrors.password}
+              helperText={
+                editingUser
+                  ? `Setting a password here resets it: the user must change it at next sign in. ${PASSWORD_POLICY_HINT}`
+                  : `The user must change it at first sign in. ${PASSWORD_POLICY_HINT}`
+              }
             >
               <input
                 type="password"
@@ -691,6 +751,33 @@ export default function UserManagementPage() {
         message={`Are you sure you want to delete user account "${userToDelete?.name}" (${userToDelete?.email})? This action is permanent.`}
         confirmText={deleting ? 'Deleting...' : 'Delete User'}
         type="danger"
+      />
+
+      {/* Password reset (DEC-022) */}
+      <ConfirmationDialog
+        isOpen={Boolean(resetTarget)}
+        onClose={() => !resetting && setResetTarget(null)}
+        onConfirm={handleConfirmReset}
+        title="Reset password?"
+        message={
+          resetTarget ? (
+            <>
+              A temporary password will be created for <strong>{resetTarget.name}</strong> ({resetTarget.email}).
+              Their current password stops working and they are signed out everywhere. You will see the
+              temporary password once.
+            </>
+          ) : null
+        }
+        confirmText="Reset password"
+        danger={false}
+        loading={resetting}
+      />
+      <TemporaryPasswordModal
+        isOpen={Boolean(issuedPassword)}
+        onClose={() => setIssuedPassword(null)}
+        userName={issuedPassword?.name}
+        userEmail={issuedPassword?.email}
+        temporaryPassword={issuedPassword?.temporaryPassword}
       />
     </div>
   );

@@ -98,6 +98,20 @@ export function AuthProvider({ children }) {
     throw new Error(response.message || 'Registration failed');
   }, []);
 
+  // Changing the password revokes the old token on the server, so adopt the fresh one
+  const changePassword = useCallback(async ({ currentPassword, newPassword }) => {
+    const response = await authService.changePassword({ currentPassword, newPassword });
+    if (response.success && response.data) {
+      const { user: updatedUser, token: receivedToken } = response.data;
+      localStorage.setItem(TOKEN_KEY, receivedToken);
+      localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+      setUser(updatedUser);
+      setToken(receivedToken);
+      return updatedUser;
+    }
+    throw new Error(response.message || 'Password change failed');
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await authService.logout();
@@ -116,6 +130,7 @@ export function AuthProvider({ children }) {
     isAuthenticated: Boolean(token && user),
     login,
     register,
+    changePassword,
     logout,
     getDashboardPath: () => getDashboardPathForRole(user?.role),
   };

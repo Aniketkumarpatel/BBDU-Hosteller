@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import NotificationBell from './NotificationBell.jsx';
 
@@ -31,6 +32,13 @@ export default function Topbar({ title, onOpenSidebar }) {
           <div className="font-semibold text-slate-800">{user?.name}</div>
           <div className="text-[10px] text-slate-500">{user?.role}</div>
         </div>
+
+        <Link
+          to="/change-password"
+          className="hidden text-xs font-medium text-slate-500 hover:text-slate-800 sm:inline"
+        >
+          Change password
+        </Link>
 
         <button
           type="button"

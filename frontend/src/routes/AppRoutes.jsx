@@ -5,6 +5,7 @@ import LandingPage from '../pages/LandingPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
+import ChangePasswordPage from '../pages/ChangePasswordPage.jsx';
 import { ProtectedRoute, RoleProtectedRoute } from './Guards.jsx';
 
 // Role Dashboards
@@ -21,6 +22,7 @@ import ComplaintDetailPage from '../pages/student/ComplaintDetailPage.jsx';
 
 // Operational Complaint Pages (Step 5.2)
 import WardenComplaintsPage from '../pages/warden/WardenComplaintsPage.jsx';
+import WardenPeoplePage from '../pages/warden/WardenPeoplePage.jsx';
 import StaffComplaintsPage from '../pages/staff/StaffComplaintsPage.jsx';
 import AuthorityComplaintsPage from '../pages/authority/AuthorityComplaintsPage.jsx';
 import ComplaintManageDetailPage from '../pages/complaints/ComplaintManageDetailPage.jsx';
@@ -84,6 +86,9 @@ export default function AppRoutes() {
 
       {/* Authenticated Routes */}
       <Route element={<ProtectedRoute />}>
+        {/* Any signed-in user; also the only page reachable while a password change is forced */}
+        <Route path="/change-password" element={<ChangePasswordPage />} />
+
         {/* Persistent Dashboard Layout for Non-Admin Routes */}
         <Route element={<DashboardLayout />}>
           {/* Student Portal & Complaints */}
@@ -102,6 +107,7 @@ export default function AppRoutes() {
             <Route path="/warden/dashboard" element={<WardenDashboard />} />
             <Route path="/warden/complaints" element={<WardenComplaintsPage />} />
             <Route path="/warden/complaints/:id" element={<ComplaintManageDetailPage />} />
+            <Route path="/warden/people" element={<WardenPeoplePage />} />
             <Route path="/warden/analytics" element={<AnalyticsDashboardPage />} />
           </Route>
 

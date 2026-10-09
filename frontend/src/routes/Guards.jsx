@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext.jsx';
  * If not authenticated, redirects to /login and saves current location in state.
  */
 export function ProtectedRoute() {
-  const { isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -22,6 +22,12 @@ export function ProtectedRoute() {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // A temporary or admin-set password must be replaced before anything else is usable.
+  // The backend enforces the same rule (403 PASSWORD_CHANGE_REQUIRED); this keeps the UI in step.
+  if (user?.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
   }
 
   return <Outlet />;

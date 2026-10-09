@@ -35,6 +35,24 @@ export const getMe = async () => {
   return data;
 };
 
+export const changePassword = async ({ currentPassword, newPassword }) => {
+  const { data } = await api.post('/auth/change-password', { currentPassword, newPassword });
+  return data;
+};
+
+// SUPER_ADMIN (any user) or WARDEN (student and staff of own hostel).
+// The response carries the one-time temporary password.
+export const resetUserPassword = async (userId) => {
+  const { data } = await api.post(`/auth/users/${userId}/reset-password`);
+  return data;
+};
+
+// WARDEN only: students and staff of the warden's own hostel
+export const listHostelUsers = async (params = {}) => {
+  const { data } = await api.get('/auth/hostel-users', { params });
+  return data;
+};
+
 export const logout = async () => {
   try {
     const { data } = await api.post('/auth/logout');
