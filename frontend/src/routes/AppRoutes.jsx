@@ -7,6 +7,16 @@ import RegisterPage from '../pages/RegisterPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 import ChangePasswordPage from '../pages/ChangePasswordPage.jsx';
 import StaffJobsLayout from '../layouts/StaffJobsLayout.jsx';
+import WardenPilotLayout from '../layouts/WardenPilotLayout.jsx';
+import StudentPilotLayout from '../layouts/StudentPilotLayout.jsx';
+import StudentHomePage from '../pages/student/StudentHomePage.jsx';
+import StudentProblemsPage from '../pages/student/StudentProblemsPage.jsx';
+import StudentProblemPage from '../pages/student/StudentProblemPage.jsx';
+import StudentReportPage from '../pages/student/StudentReportPage.jsx';
+import StudentAlertsPage from '../pages/student/StudentAlertsPage.jsx';
+import StudentMePage from '../pages/student/StudentMePage.jsx';
+import WardenProblemsPage from '../pages/warden/WardenProblemsPage.jsx';
+import WardenProblemPage from '../pages/warden/WardenProblemPage.jsx';
 import StaffJobsPage from '../pages/staff/StaffJobsPage.jsx';
 import StaffJobPage from '../pages/staff/StaffJobPage.jsx';
 import { IS_PILOT_MODE } from '../config/pilot.js';
@@ -81,6 +91,18 @@ function ForwardToJob() {
   return <Navigate to={`/staff/jobs/${id}`} replace />;
 }
 
+// And for the student's old complaint links
+function ForwardToStudentProblem() {
+  const { id } = useParams();
+  return <Navigate to={`/student/problems/${id}`} replace />;
+}
+
+// Same for the Warden's old complaint links
+function ForwardToProblem() {
+  const { id } = useParams();
+  return <Navigate to={`/warden/problems/${id}`} replace />;
+}
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -107,14 +129,50 @@ export default function AppRoutes() {
           </Route>
         </Route>
 
+        {/* Student pilot screens (DEC-031): own layout with a location bar and bottom tabs */}
+        {IS_PILOT_MODE && (
+          <Route element={<RoleProtectedRoute allowedRoles={['STUDENT']} />}>
+            <Route element={<StudentPilotLayout />}>
+              <Route path="/student/home" element={<StudentHomePage />} />
+              <Route path="/student/problems" element={<StudentProblemsPage />} />
+              <Route path="/student/problems/:id" element={<StudentProblemPage />} />
+              <Route path="/student/report" element={<StudentReportPage />} />
+              <Route path="/student/alerts" element={<StudentAlertsPage />} />
+              <Route path="/student/me" element={<StudentMePage />} />
+            </Route>
+          </Route>
+        )}
+
+        {/* Warden pilot screens (DEC-029): own layout with two tabs, Problems and People */}
+        {IS_PILOT_MODE && (
+          <Route element={<RoleProtectedRoute allowedRoles={['WARDEN', 'SUPER_ADMIN']} />}>
+            <Route element={<WardenPilotLayout />}>
+              <Route path="/warden/problems" element={<WardenProblemsPage />} />
+              <Route path="/warden/problems/:id" element={<WardenProblemPage />} />
+              <Route path="/warden/people" element={<WardenPeoplePage />} />
+            </Route>
+          </Route>
+        )}
+
         {/* Persistent Dashboard Layout for Non-Admin Routes */}
         <Route element={<DashboardLayout />}>
           {/* Student Portal & Complaints */}
           <Route element={<RoleProtectedRoute allowedRoles={['STUDENT']} />}>
-            <Route path="/student/dashboard" element={<StudentDashboard />} />
-            <Route path="/student/complaints" element={<MyComplaintsPage />} />
-            <Route path="/student/complaints/new" element={<SubmitComplaintPage />} />
-            <Route path="/student/complaints/:id" element={<ComplaintDetailPage />} />
+            {IS_PILOT_MODE ? (
+              <>
+                <Route path="/student/dashboard" element={<Navigate to="/student/home" replace />} />
+                <Route path="/student/complaints" element={<Navigate to="/student/problems" replace />} />
+                <Route path="/student/complaints/new" element={<Navigate to="/student/report" replace />} />
+                <Route path="/student/complaints/:id" element={<ForwardToStudentProblem />} />
+              </>
+            ) : (
+              <>
+                <Route path="/student/dashboard" element={<StudentDashboard />} />
+                <Route path="/student/complaints" element={<MyComplaintsPage />} />
+                <Route path="/student/complaints/new" element={<SubmitComplaintPage />} />
+                <Route path="/student/complaints/:id" element={<ComplaintDetailPage />} />
+              </>
+            )}
             <Route path="/student/mess" element={<Navigate to="/mess" replace />} />
             <Route path="/student/outpass" element={<Navigate to="/outpass" replace />} />
             <Route path="/student/services" element={<Navigate to="/student-services" replace />} />
@@ -122,10 +180,20 @@ export default function AppRoutes() {
 
           {/* Warden Portal & Complaints Management */}
           <Route element={<RoleProtectedRoute allowedRoles={['WARDEN', 'SUPER_ADMIN']} />}>
-            <Route path="/warden/dashboard" element={<WardenDashboard />} />
-            <Route path="/warden/complaints" element={<WardenComplaintsPage />} />
-            <Route path="/warden/complaints/:id" element={<ComplaintManageDetailPage />} />
-            <Route path="/warden/people" element={<WardenPeoplePage />} />
+            {IS_PILOT_MODE ? (
+              <>
+                <Route path="/warden/dashboard" element={<Navigate to="/warden/problems" replace />} />
+                <Route path="/warden/complaints" element={<Navigate to="/warden/problems" replace />} />
+                <Route path="/warden/complaints/:id" element={<ForwardToProblem />} />
+              </>
+            ) : (
+              <>
+                <Route path="/warden/dashboard" element={<WardenDashboard />} />
+                <Route path="/warden/complaints" element={<WardenComplaintsPage />} />
+                <Route path="/warden/complaints/:id" element={<ComplaintManageDetailPage />} />
+                <Route path="/warden/people" element={<WardenPeoplePage />} />
+              </>
+            )}
             <Route path="/warden/analytics" element={<AnalyticsDashboardPage />} />
           </Route>
 

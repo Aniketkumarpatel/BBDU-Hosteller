@@ -14,13 +14,15 @@ export const getDashboardPathForRole = (role) => {
     case 'AUTHORITY':
       return '/authority/dashboard';
     case 'WARDEN':
-      return '/warden/dashboard';
+      // Pilot wardens land on their problem list (DEC-029)
+      return IS_PILOT_MODE ? '/warden/problems' : '/warden/dashboard';
     case 'HOSTEL_STAFF':
       // Pilot technicians land straight on their job list (DEC-026)
       return IS_PILOT_MODE ? '/staff/jobs' : '/staff/dashboard';
     case 'STUDENT':
     default:
-      return '/student/dashboard';
+      // Pilot students land on the new home (DEC-031)
+      return IS_PILOT_MODE ? '/student/home' : '/student/dashboard';
   }
 };
 
