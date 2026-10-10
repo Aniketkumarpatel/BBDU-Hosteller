@@ -382,6 +382,84 @@
 
 ---
 
+### DEC-028: A Warden May Only Be Offered, and Assign To, Staff of Their Own Hostel
+- **Date**: 2026-10-10
+- **Status**: Accepted (implemented 2026-10-10; backend suite not re-run, see report.md Section 2 caveat)
+- **Context**: Building the Warden's "give to a technician" screen showed that `getEligibleAssignees` returned every active staff member and warden on campus, and `assignComplaint` and `reassignComplaint` accepted any active staff. A Warden could therefore see other hostels' staff (name, email, phone) and assign a complaint across hostels. Fine for a one-hostel pilot, wrong for a campus.
+- **Alternatives Considered**:
+  - *Alternative A: Filter the list in the frontend only*: Quick, but the data still leaves the server and a hand-made request can still assign across hostels. Not a control.
+  - *Alternative B: Require every staff member to have a hostel and refuse the rest*: Strict, but breaks existing data and many existing tests, where staff have no hostel.
+  - *Alternative C: Server-side scope that tolerates staff with no hostel (Selected)*: a warden with a hostel sees staff of that hostel plus staff with no hostel set; assign and reassign refuse (403) an assignee whose hostel is set and different. SUPER_ADMIN and AUTHORITY are unchanged.
+- **Rationale**: Enforced where the data lives, backwards compatible, small. Staff with no hostel remain selectable so legacy data keeps working; tightening that is a wave 7 task.
+- **Consequences**: A warden with no `hostelId` is not constrained by this rule (defect D5). Related, not fixed here: D6 (technician list scope) and D7 (unescaped search regex). Tests: `tests/wardenAssignScope.test.js`.
+
+---
+
+### DEC-029: Task-First Warden Screens, One-Tap Assignment, Shared Pilot Shell
+- **Date**: 2026-10-10
+- **Status**: Accepted (built 2026-10-10)
+- **Context**: The Warden's existing home showed student, room, block and staff counts and occupancy charts before any problem. Their real question is "what needs me now". Assigning needed two separate steps (triage with a department, then assign) in a 1381-line page shared with other roles. The Warden may also read little English.
+- **Alternatives Considered**:
+  - *Alternative A: Restyle the existing dashboard and complaint page*: Least new code, same structural problem, and the shared page would risk the Authority and Admin views.
+  - *Alternative B: Keep triage and assign as two screens, matching the backend states*: Faithful to the state machine, but two steps and two forms for what the Warden thinks of as one decision.
+  - *Alternative C: New pilot-only screens; one action does both steps (Selected)*: Six tiles filter a single list in the order of urgency; a new problem is given to a technician in one sheet (urgency pre-filled from the student, technician chosen by name with right-trade and workload shown); the trade comes from the technician so no department form is needed. The service calls triage then assign, and says so clearly if only the first succeeded.
+- **Rationale**: Matches how the Warden decides, removes a form, and reuses the technician screens' look, ordering and lateness rule so both roles agree. Backend states and metrics are unchanged. The sheet only offers actions the backend allows (change technician only while given, seen or being fixed; a reason of 5 or more characters). Changing a technician is shown on the card only for late problems to avoid accidental changes.
+- **Consequences**: A SUBMITTED problem is triaged at the moment it is given, so triage time equals assignment time for those problems; the pilot measures use acknowledge and resolve times, so this does not distort them, but it should be remembered when reading triage timestamps. The trade suggestion uses a department-code map (`CATEGORY_TRADES`) that matches the seed data and is checked by a test for missing categories. The People page moved into the pilot shell and the login, change password and temporary password screens are translated, so the first screens a newly set-up user sees are plain language. Student-written text is not translated. Hindi is a draft pending native review. Wardens cannot change the technician of a REOPENED problem because the backend does not allow it.
+
+---
+
+### DEC-030: Plain-Language Notifications Built From Type and Role, With Complaint Context Added Centrally
+- **Date**: 2026-10-10
+- **Status**: Accepted (built 2026-10-10)
+- **Context**: The existing bell showed English text written by the server, such as "Complaint Reopened by Student" and "Complaint #CMP-2026-00003 (Wash basin blocked) has been...", plus ticket numbers and an "in-app notification center" footer. It is untranslated, dense, and gives a technician a ticket number instead of the room he has to walk to. The notification record carried only the ticket number and priority.
+- **Alternatives Considered**:
+  - *Alternative A: Rewrite the English text at each of the roughly twenty server call sites*: Fixes English only, does nothing for Hindi, and mixes wording into business logic.
+  - *Alternative B: Translate on the server by user language*: Needs a stored language per user and server-side dictionaries, and a changed notification needs a data migration.
+  - *Alternative C: Store facts on the server, word them on the client (Selected)*: `createNotification` adds the room, block and complaint title to `metadata` in one place; the client turns `type` plus the user's role into a short sentence in the chosen language and shows "Room 102 and the problem" below it. Types without plain wording keep the server's English text.
+- **Rationale**: One backend change instead of twenty; the stored notification stays language-neutral so existing records and the old bell keep working; language follows the on-screen switch immediately. The wording for each type and role lives in the same dictionary as every other label, so the existing tests check parity and a new test checks that every worded type exists in the backend list.
+- **Consequences**: One extra database read per complaint notification (a single `findById` with two small populates); the lookup failing never blocks a notification. Notifications created before this change have no room or title, so they show the plain sentence without the second line. The old bell is unchanged for students, Authority and Admin, so two bells exist until wave 7. Each role needs its own wording per type; only Warden and technician are covered. Hindi is a draft pending native review.
+
+---
+
+### DEC-031: Zomato-Style Cherry-Red Pilot Design, Student Screens First
+- **Date**: 2026-10-10
+- **Status**: Accepted (student screens built and browser-verified 2026-10-10; technician and Warden restyle pending)
+- **Context**: The first plain-language screens (DEC-026, DEC-029) fixed wording and order but still looked like an admin tool. The owner asked for a clean, modern, Zomato-like interface with a clear flow that low-literacy users can follow. Students are the largest group and the entry point of every problem.
+- **Alternatives Considered**:
+  - *Alternative A: Keep the indigo admin look and only polish spacing*: Cheapest, but does not answer the request and keeps the "ticket system" feel.
+  - *Alternative B: Red everywhere, including status*: Looks like Zomato, but red then means both "brand" and "danger", so a student cannot tell a late problem from a normal one.
+  - *Alternative C: Cherry red for brand and main buttons only, separate status colours (Selected)*: Red is the brand, the main call to action and the active tab. Status uses its own palette: orange for late or needs you, blue for being fixed, violet for waiting, green for done.
+- **Rationale**: Follows how food-delivery apps are read: a big promise on top, a few large tiles, a live tracker card per order, a timeline, a call button for the person coming, bottom tabs within thumb reach. A problem is tracked like an order. Keeping red out of status colours keeps urgency readable. Brand colour is a token (`--color-brand-50..800`), so a different shade later is one edit.
+- **Consequences**: Students get four bottom tabs (Home, Problems, Alerts, Me) and a location row, in pilot mode only; old pages stay for non-pilot. Titles stored on the server are English (built from the issue label), so a Hindi student sees an English title on a card with a Hindi category line; translating stored text is out of scope. The student's confirmation is a plain "Is it fixed?" with Yes and No, and No needs a reason of 5 or more characters because the server requires it. Hindi text gets a roomier line height and Hindi dates use the full month name, because the short form ends in a sign that looks like a degree mark. Technician and Warden screens still use the earlier palette mapping and will be restyled next, in the same pattern. Hindi remains a draft pending native review, and no real user has tested the screens yet (U5).
+
+---
+
+### DEC-032: Poppins Self-Hosted as the App Font, and Photo-Style Gradient Cards
+- **Date**: 2026-10-10
+- **Status**: Accepted (built and browser-verified on the student screens 2026-10-10)
+- **Context**: After DEC-031 the owner supplied a Zomato screenshot and said the font and the cards did not match: no rich pictures and plain edges. The CSS named "Inter" but nothing ever loaded it, so every device fell back to its own system font (Segoe UI, Roboto), which is why text looked generic and differed between phones.
+- **Alternatives Considered**:
+  - *Alternative A: Zomato's own font (Okra)*: It is paid and proprietary, so it cannot be used.
+  - *Alternative B: Plus Jakarta Sans with Noto Sans Devanagari for Hindi*: Soft and modern, but Hindi would be a different family from English.
+  - *Alternative C: Poppins through a Google Fonts link*: No install, but every phone needs internet and sends a request to Google on each visit.
+  - *Alternative D: Poppins self-hosted with `@fontsource/poppins` (Selected)*: Round, bold, geometric headings close to Zomato, with a matching Devanagari design so both languages look like one family. Bundled into the build, so it works offline and sends nothing to a third party.
+- **Rationale**: A font that is actually loaded gives the same look on every phone. Zomato cards get their richness from food photos; we have none, so each category gets a gradient cover with a large white icon, a faded copy of the icon, a dark label chip, a white open button and progress dots (the carousel dots in the reference). Under the cover come a bold title, a time pill (green, orange when late), a status and promise line with a divider, and a tinted strip for who has it. The same gradient tile (`CategoryArt`) is used on Home, in the report flow and on the problem page.
+- **Consequences**: New dependency `@fontsource/poppins` (approved by the owner; frontend `package.json` and lock file changed). The font is set globally in `index.css`, not only for pilot screens, so the old admin and Authority pages also change; Poppins is wider than Inter, so dense tables there may wrap more and should be checked before wave 7. Ten small CSS files are imported in `fonts.css` (five weights, two scripts); browsers download only the files for characters shown. Stored titles stay English, so a Hindi card shows an English title. Technician and Warden screens use the new font but not yet the new card style.
+
+---
+
+### DEC-033: Public Pages Match the Signed-In Design; Landing Copy Matches the Pilot
+- **Date**: 2026-10-10
+- **Status**: Accepted (built and browser-verified 2026-10-10)
+- **Context**: The landing, login and register pages still used the old indigo admin look, a header with a raw "Dashboard (STUDENT)" button and a redundant Home link, no language switch on the landing page, and an "API Offline" health chip. They are the first thing every user sees, so they undercut the red student design behind them. The landing page also promised "Unresolved issues move up the chain automatically", which is switched off in pilot mode (DEC-020).
+- **Alternatives Considered**:
+  - *Alternative A: Recolour only*: Fast, but keeps the cramped header and English-only landing.
+  - *Alternative B: Rebuild with the student patterns (Selected)*: One slim header (logo, language switch, one button), the student Home banner as the hero, three short promises with gradient tiles, and the login with the same large inputs and buttons as the inner screens.
+- **Rationale**: One visual language from first screen to last, in English and Hindi. The three promises say only what the pilot does today (report, follow like an order, close only when the student confirms), so nothing on the first screen is untrue. On a phone the header sign-in button is hidden because the hero has the same button, so the bar never wraps; a signed-in visitor gets an arrow button to open the app.
+- **Consequences**: The public header shows no "Register" link; it is under the hero button and on the login page, so the public sign-up route is unchanged. The register form is only recoloured and its card restyled; its fields keep the old compact sizing and its English text, and need the same rebuild later. The header logo is the BBDUHOSTELLER wordmark, drawn at the owner's request as one rectangle: a solid red "BBDU" half with white letters beside a white "HOSTELLER" half with red letters, on an offset pencil-hatched red shadow (`components/common/BrandLogo.jsx`, real text so it follows the app font). The first red version reused the old generic house-and-door icon, which the owner rejected as clip art. The favicon is a separate white "B" on a red gradient tile, because the full wordmark is unreadable at 16 px. On phones the header has only the wordmark and the language switch; the sign-in or open-app button is in the hero. The API health chip shows only in development builds. The demo-accounts panel is still on the login page (defect D2, task 5.3c); it was only restyled, not removed. Hindi wording is a draft pending native review.
+
+---
+
 ## Decision Log Template (For New Tasks)
 
 When making any new non-trivial decision, copy and fill out this template at the bottom of this file:

@@ -251,7 +251,10 @@ BBDU-Hosteller/
         |   |-- PublicLayout.jsx      # Public pages with nav and footer (Outlet)
         |   |-- AdminLayout.jsx       # Admin sidebar + topbar + Outlet
         |   |-- DashboardLayout.jsx   # Role-aware sub-nav wrapper (children pattern)
-        |   |-- StaffJobsLayout.jsx   # Pilot technician shell: one short header, language switch, bell, account menu (DEC-026)
+        |   |-- PilotShell.jsx        # Shared pilot header (language switch, bell, account menu) with optional tabs (DEC-026, DEC-029)
+        |   |-- StaffJobsLayout.jsx   # Technician shell: PilotShell with no tabs (DEC-026)
+        |   |-- WardenPilotLayout.jsx # Warden shell: PilotShell with tabs Problems and People (DEC-029)
+        |   |-- StudentPilotLayout.jsx # Student shell: location row, language switch, bottom tabs Home, Problems, Alerts, Me (DEC-031)
         |
         |-- components/
         |   |-- common/          # 14 reusable UI components
@@ -308,8 +311,11 @@ BBDU-Hosteller/
         |   |-- LanguageContext.jsx # LanguageProvider, useLanguage() -> { language, setLanguage, t }; choice kept in localStorage
         |
         |-- components/jobs/     # Technician screens: JobCard, StageChip, DueLine, ProgressSteps, FinishSheet, icons, stageStyle
-        |-- hooks/               # Empty (.gitkeep) - useAuth is in AuthContext
-        |-- utils/               # passwordPolicy.js, jobPresentation.js (pure job rules), jobFormat.js (pure wording helpers)
+        |-- components/problems/ # Warden screens: ProblemCard, AssignSheet (DEC-029)
+        |-- components/student/  # Student screens: categoryStyle, StudentStatusChip, EtaLine, TrackerCard, Timeline, BottomTabs (DEC-031)
+        |   (components/common/PilotNotificationBell.jsx: plain-language bell used by PilotShell, DEC-030; the old NotificationBell stays for other roles)
+        |-- hooks/               # useUnreadCount.js (unread notification count for the student tabs); useAuth is in AuthContext
+        |-- utils/               # passwordPolicy.js, jobPresentation.js (pure technician job rules), problemPresentation.js (pure Warden rules), notificationPresentation.js (pure notification wording, routes, time since), studentPresentation.js (pure student stage, promise, timeline and report payload), jobFormat.js and studentFormat.js (pure wording helpers)
         |-- (frontend/tests/)    # node:test unit tests for the dictionary and job rules (npm test in frontend)
         |-- assets/              # Static assets (images, icons)
 ```
