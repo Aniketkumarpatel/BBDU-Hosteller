@@ -132,7 +132,7 @@ BBDU-Hosteller/
 |   |   |
 |   |   |-- constants/           # 14 frozen enum files
 |   |   |   |-- roles.js                          # STUDENT, WARDEN, HOSTEL_STAFF, AUTHORITY, SUPER_ADMIN
-|   |   |   |-- complaint.constants.js            # 10 categories, 4 priorities, 12 statuses, issue types
+|   |   |   |-- complaint.constants.js            # 10 categories (ELECTRICAL, PLUMBING, CLEANING, MESS, INTERNET, FURNITURE, SECURITY, ROOM, WATER, OTHER), 4 priorities, 12 statuses, issue types
 |   |   |   |-- sla.constants.js                  # SLA statuses, escalation triggers, default durations
 |   |   |   |-- workOrder.constants.js             # WO statuses, priorities, asset types/conditions
 |   |   |   |-- aiCommandCenter.constants.js       # Insight categories, modules, health bands
@@ -251,6 +251,7 @@ BBDU-Hosteller/
         |   |-- PublicLayout.jsx      # Public pages with nav and footer (Outlet)
         |   |-- AdminLayout.jsx       # Admin sidebar + topbar + Outlet
         |   |-- DashboardLayout.jsx   # Role-aware sub-nav wrapper (children pattern)
+        |   |-- StaffJobsLayout.jsx   # Pilot technician shell: one short header, language switch, bell, account menu (DEC-026)
         |
         |-- components/
         |   |-- common/          # 14 reusable UI components
@@ -302,8 +303,14 @@ BBDU-Hosteller/
         |-- config/
         |   |-- pilot.js         # IS_PILOT_MODE (VITE_PILOT_MODE !== 'false'): frontend navigation scoping (DEC-017)
         |
+        |-- i18n/
+        |   |-- dictionary.js    # English and Hindi labels (flat keys, {placeholders}), translate(); Hindi is a draft (DEC-027)
+        |   |-- LanguageContext.jsx # LanguageProvider, useLanguage() -> { language, setLanguage, t }; choice kept in localStorage
+        |
+        |-- components/jobs/     # Technician screens: JobCard, StageChip, DueLine, ProgressSteps, FinishSheet, icons, stageStyle
         |-- hooks/               # Empty (.gitkeep) - useAuth is in AuthContext
-        |-- utils/               # Empty (.gitkeep) - helpers co-located in components
+        |-- utils/               # passwordPolicy.js, jobPresentation.js (pure job rules), jobFormat.js (pure wording helpers)
+        |-- (frontend/tests/)    # node:test unit tests for the dictionary and job rules (npm test in frontend)
         |-- assets/              # Static assets (images, icons)
 ```
 

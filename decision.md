@@ -356,6 +356,32 @@
 
 ---
 
+### DEC-026: Task-First Plain-Language Screens for Pilot Technicians
+- **Date**: 2026-10-10
+- **Status**: Accepted (technician screens built 2026-10-10; Warden screens pending)
+- **Context**: A phone-sized audit of the existing staff screens found: the home screen described the department and hostel instead of the job; five statistic cards came before the first job; jobs sat in a wide table cut off on a phone; one job was five screens tall with ten sections (including an assignment audit trail and a deferred-module work order list) and showed a database ID; the room number was near the bottom; and the dashboard disagreed with the queue about the job count. Wardens and technicians may read little English or little at all, and risk R2 (technicians do not use the tool) decides whether the pilot works.
+- **Alternatives Considered**:
+  - *Alternative A: Reword and restyle the existing staff pages*: Least new code. But the structure itself answers the wrong question, and the shared 1381-line complaint page also serves Warden and Authority, so changes risk breaking their view.
+  - *Alternative B: A full redesign of every screen for every role*: Consistent in the end, but a very large change with no evidence yet about what the real users need.
+  - *Alternative C: New pilot-only technician screens (Selected)*: A job list in working order with the room and block largest, one big next-step button per job, a four-step progress path, tap-to-fill work notes, and details behind "More details". Own layout with one header. Shown only when VITE_PILOT_MODE is true; old pages forward there, and stay for non-pilot use.
+- **Rationale**: Fixes the structure for the users who matter most to the pilot, leaves every other role untouched, and is reversible with one flag (the DEC-017 approach). Acknowledge and start remain two steps so the time-to-acknowledge pilot measure still shows whether the technician saw the job. Photos are not shown on the job screen until upload access is fixed (blocker B3). A "Can't finish, need help" action was considered and left out by the user for now.
+- **Consequences**: Warden screens (U3) and notifications (U4) follow. The design must be tested with a real Warden and technician (U5); nothing here proves literacy needs are met. Two screens now exist per concept (old and new), so non-pilot fixes must consider both.
+
+---
+
+### DEC-027: In-House English and Hindi Dictionary Instead of a Translation Library
+- **Date**: 2026-10-10
+- **Status**: Accepted
+- **Context**: Technician screens need English and Hindi with a switch that stays visible. The app has 4 frontend dependencies and the project values a small supply chain.
+- **Alternatives Considered**:
+  - *Alternative A: react-i18next (or similar)*: Mature, supports plurals, formatting, lazy loading. Adds dependencies and configuration for a few hundred labels in two languages.
+  - *Alternative B: Hard-code Hindi strings beside English in each component*: No setup, but labels drift apart and nothing can check that every label exists in both languages.
+  - *Alternative C: One flat dictionary per language plus a 20-line translate() and a React context (Selected)*: Zero dependencies, testable. A test fails if a key exists in only one language, if a placeholder differs, if a Hindi label has no Devanagari text, or if the backend gains a category or priority with no label.
+- **Rationale**: Fits the size of the problem, keeps wording reviewable in one file (important because the Hindi needs a native speaker's review), and the backend cross-check already caught real drift (category names in the docs did not match the code).
+- **Consequences**: No plural or date-format engine: wording is written to avoid plurals ("You have 4 jobs to do") and dates use the browser's locale formatting. The dictionary will need a real library if languages beyond two or complex grammar are added. The default language is English; the choice is saved per device, not per user account. Student-written text (titles, descriptions) is shown as written and is not translated.
+
+---
+
 ## Decision Log Template (For New Tasks)
 
 When making any new non-trivial decision, copy and fill out this template at the bottom of this file:
