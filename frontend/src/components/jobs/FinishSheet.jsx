@@ -85,7 +85,7 @@ export default function FinishSheet({ isOpen, onClose, onSubmit, submitting, err
           rows={3}
           maxLength={1500}
           placeholder={t('finish.placeholder')}
-          className="mt-4 w-full rounded-xl border-2 border-slate-200 p-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-hidden"
+          className="mt-4 w-full rounded-xl border-2 border-slate-200 p-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-hidden"
         />
 
         {showHint && !valid && (

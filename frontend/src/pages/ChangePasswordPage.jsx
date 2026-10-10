@@ -1,17 +1,24 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, getDashboardPathForRole } from '../context/AuthContext.jsx';
-import { getPasswordPolicyError, PASSWORD_POLICY_HINT } from '../utils/passwordPolicy.js';
+import { useLanguage } from '../i18n/LanguageContext.jsx';
+import LanguageToggle from '../components/common/LanguageToggle.jsx';
+import { getPasswordPolicyIssue } from '../utils/passwordPolicy.js';
 
 const inputClass =
-  'mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200';
-const labelClass = 'block text-xs font-semibold uppercase tracking-wider text-slate-700';
+  'mt-1.5 h-12 w-full rounded-xl border-2 border-slate-200 px-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-hidden';
+const labelClass = 'block text-sm font-semibold text-slate-700';
 
+/**
+ * Change password. In forced mode (temporary or admin-set password) it is the only
+ * screen the account can use, so it speaks plain words in English or Hindi, and the
+ * language switch is on the card itself.
+ */
 export default function ChangePasswordPage() {
   const { user, changePassword, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
-  // Forced mode: the account is using a temporary or admin-set password
   const forced = Boolean(user?.mustChangePassword);
 
   const [currentPassword, setCurrentPassword] = useState('');
@@ -26,20 +33,20 @@ export default function ChangePasswordPage() {
     setError('');
 
     if (!currentPassword) {
-      setError(forced ? 'Enter the temporary password you were given.' : 'Enter your current password.');
+      setError(t(forced ? 'pw.err.currentForced' : 'pw.err.current'));
       return;
     }
-    const policyError = getPasswordPolicyError(newPassword);
-    if (policyError) {
-      setError(policyError);
+    const issue = getPasswordPolicyIssue(newPassword);
+    if (issue) {
+      setError(t(`pw.err.${issue}`));
       return;
     }
     if (newPassword === currentPassword) {
-      setError('The new password must be different from the current one.');
+      setError(t('pw.err.same'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('The new password and its confirmation do not match.');
+      setError(t('pw.err.match'));
       return;
     }
 
@@ -48,7 +55,8 @@ export default function ChangePasswordPage() {
       const updatedUser = await changePassword({ currentPassword, newPassword });
       navigate(getDashboardPathForRole(updatedUser.role), { replace: true });
     } catch (err) {
-      setError(err.userMessage || err.message || 'Could not change the password. Please try again.');
+      // The server's message (for example "Current password is incorrect.") is shown as it is
+      setError(err?.response?.data?.message || t('pw.err.generic'));
     } finally {
       setSubmitting(false);
     }
@@ -60,45 +68,44 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-10">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="flex justify-end">
+          <LanguageToggle />
+        </div>
+
+        <div className="mt-2 text-center">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-600">
+            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
             </svg>
           </div>
           <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">
-            {forced ? 'Set a new password' : 'Change password'}
+            {forced ? t('pw.titleForced') : t('menu.changePassword')}
           </h1>
           <p className="mt-1 text-sm text-slate-500">{user?.email}</p>
         </div>
 
-        {forced && (
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-            You are signed in with a temporary password. Choose your own password to continue. You
-            will not be able to use the system until you do.
-          </div>
-        )}
+        {forced && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-base text-amber-800">{t('pw.banner')}</div>}
 
         {error && (
-          <div role="alert" className="mt-4 rounded-lg bg-red-50 p-3 text-xs text-red-700">
+          <div role="alert" className="mt-4 rounded-xl bg-red-50 p-3 text-base font-medium text-red-700">
             {error}
           </div>
         )}
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit} noValidate>
+        <form className="mt-5 space-y-4" onSubmit={handleSubmit} noValidate>
           <div>
             <div className="flex items-center justify-between">
               <label htmlFor="currentPassword" className={labelClass}>
-                {forced ? 'Temporary password' : 'Current password'}
+                {forced ? t('pw.temporary') : t('pw.current')}
               </label>
               <button
                 type="button"
                 onClick={() => setShowPasswords(!showPasswords)}
-                className="text-xs text-indigo-600 hover:text-indigo-800"
+                className="h-9 px-2 text-sm font-semibold text-brand-600 hover:text-brand-800"
               >
-                {showPasswords ? 'Hide' : 'Show'}
+                {showPasswords ? t('pw.hide') : t('pw.show')}
               </button>
             </div>
             <input
@@ -113,7 +120,7 @@ export default function ChangePasswordPage() {
 
           <div>
             <label htmlFor="newPassword" className={labelClass}>
-              New password
+              {t('pw.new')}
             </label>
             <input
               id="newPassword"
@@ -123,12 +130,12 @@ export default function ChangePasswordPage() {
               onChange={(e) => setNewPassword(e.target.value)}
               className={inputClass}
             />
-            <p className="mt-1 text-[11px] text-slate-500">{PASSWORD_POLICY_HINT}</p>
+            <p className="mt-1 text-sm text-slate-500">{t('pw.hint')}</p>
           </div>
 
           <div>
             <label htmlFor="confirmPassword" className={labelClass}>
-              Confirm new password
+              {t('pw.confirm')}
             </label>
             <input
               id="confirmPassword"
@@ -143,27 +150,20 @@ export default function ChangePasswordPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
+            className="flex h-14 w-full items-center justify-center rounded-xl bg-brand-600 text-lg font-bold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-brand-300"
           >
-            {submitting ? (
-              <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Saving...
-              </span>
-            ) : (
-              'Save new password'
-            )}
+            {submitting ? t('pw.saving') : t('pw.save')}
           </button>
         </form>
 
-        <div className="mt-5 text-center text-xs">
+        <div className="mt-4 text-center">
           {forced ? (
-            <button type="button" onClick={handleSignOut} className="font-medium text-slate-500 hover:text-slate-800">
-              Sign out instead
+            <button type="button" onClick={handleSignOut} className="h-11 px-3 text-base font-medium text-slate-500 hover:text-slate-800">
+              {t('pw.signOutInstead')}
             </button>
           ) : (
-            <button type="button" onClick={() => navigate(-1)} className="font-medium text-slate-500 hover:text-slate-800">
-              Cancel
+            <button type="button" onClick={() => navigate(-1)} className="h-11 px-3 text-base font-medium text-slate-500 hover:text-slate-800">
+              {t('common.cancel')}
             </button>
           )}
         </div>

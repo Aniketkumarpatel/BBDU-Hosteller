@@ -71,3 +71,17 @@ test('the agreed plain-language terms are used for the core actions', () => {
   assert.equal(DICTIONARY.en['priority.CRITICAL'], 'Very urgent');
   assert.equal(DICTIONARY.en['priority.LOW'], 'Can wait');
 });
+
+test('every password rule code has a plain-language message in both languages', async () => {
+  const { getPasswordPolicyIssue } = await import('../src/utils/passwordPolicy.js');
+  const cases = { short: 'length', abcdefgh1: 'upper', ABCDEFGH1: 'lower', Abcdefgh: 'digit', Abcdefg1: '' };
+  for (const [password, expected] of Object.entries(cases)) {
+    assert.equal(getPasswordPolicyIssue(password), expected, password);
+  }
+  assert.equal(getPasswordPolicyIssue('A1a'.repeat(50)), 'max');
+  for (const code of ['length', 'max', 'upper', 'lower', 'digit']) {
+    for (const lang of SUPPORTED_LANGUAGES) {
+      assert.ok(DICTIONARY[lang][`pw.err.${code}`], `${lang} is missing pw.err.${code}`);
+    }
+  }
+});

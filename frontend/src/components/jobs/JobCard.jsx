@@ -33,7 +33,7 @@ export default function JobCard({ job, busy, onAction }) {
     <article className={`overflow-hidden rounded-2xl border border-slate-200 border-l-4 bg-white shadow-sm ${style.accent}`}>
       <Link
         to={jobPath}
-        className="block p-4 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500"
+        className="block p-4 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand-500"
       >
         <p className="whitespace-nowrap text-2xl font-bold leading-tight text-slate-900">
           {room ? t('job.room', { room }) : t('job.roomUnknown')}

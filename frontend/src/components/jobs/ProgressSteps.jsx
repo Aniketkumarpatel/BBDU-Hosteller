@@ -22,7 +22,7 @@ export default function ProgressSteps({ done }) {
                 complete
                   ? 'bg-emerald-600 text-white'
                   : current
-                    ? 'bg-indigo-600 text-white ring-4 ring-indigo-100'
+                    ? 'bg-brand-600 text-white ring-4 ring-brand-100'
                     : 'bg-slate-100 text-slate-400'
               }`}
             >

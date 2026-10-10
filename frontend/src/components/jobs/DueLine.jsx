@@ -4,7 +4,7 @@ import { getDueInfo } from '../../utils/jobPresentation.js';
 import { describeDue } from '../../utils/jobFormat.js';
 
 const TONE = {
-  late: 'text-rose-700 bg-rose-50',
+  late: 'text-orange-800 bg-orange-50',
   soon: 'text-amber-800 bg-amber-50',
   ok: 'text-slate-600 bg-slate-50',
 };

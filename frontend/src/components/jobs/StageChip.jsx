@@ -3,7 +3,7 @@ import { STAGE_STYLE } from './stageStyle.js';
 import { useLanguage } from '../../i18n/LanguageContext.jsx';
 
 /** Status pill: icon, colour and a word, so it never depends on colour alone. */
-export default function StageChip({ stage, size = 'md' }) {
+export default function StageChip({ stage, size = 'md', perspective = 'technician' }) {
   const { t } = useLanguage();
   const style = STAGE_STYLE[stage];
   if (!style) return null;
@@ -12,7 +12,7 @@ export default function StageChip({ stage, size = 'md' }) {
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full font-semibold ring-1 ring-inset ${style.chip} ${sizing}`}>
       <Icon name={style.icon} className={size === 'lg' ? 'h-5 w-5' : 'h-4 w-4'} />
-      {t(`stage.${stage}`)}
+      {t(`${perspective === 'warden' ? 'wstage' : 'stage'}.${stage}`)}
     </span>
   );
 }
