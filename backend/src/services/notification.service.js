@@ -1,4 +1,4 @@
-import { Notification, User } from '../models/index.js';
+import { Notification, User, Complaint } from '../models/index.js';
 import ApiError from '../utils/ApiError.js';
 import { NOTIFICATION_TYPES } from '../constants/notification.constants.js';
 
@@ -6,6 +6,32 @@ import { NOTIFICATION_TYPES } from '../constants/notification.constants.js';
  * Centralized Notification Service for BBDU Hosteller.
  * Manages in-app notifications dispatched across complaint lifecycle and SLA events.
  */
+
+/**
+ * Adds the room, block and title of the related complaint to a notification's metadata so
+ * screens can say "Room 102, Tap leaking" instead of repeating a ticket number (DEC-030).
+ * Values already set by the caller win. Never throws: a notification must still be created
+ * when the lookup fails.
+ */
+const withComplaintContext = async (relatedEntityType, relatedEntityId, metadata) => {
+  if (relatedEntityType !== 'COMPLAINT' || !relatedEntityId) return metadata;
+  try {
+    const complaint = await Complaint.findById(relatedEntityId)
+      .select('title roomId blockId')
+      .populate('roomId', 'roomNumber')
+      .populate('blockId', 'name')
+      .lean();
+    if (!complaint) return metadata;
+    const context = {};
+    if (complaint.title) context.title = complaint.title;
+    if (complaint.roomId?.roomNumber) context.room = String(complaint.roomId.roomNumber);
+    if (complaint.blockId?.name) context.block = complaint.blockId.name;
+    return { ...context, ...metadata };
+  } catch (err) {
+    console.error('[notificationService] Could not add complaint context:', err.message);
+    return metadata;
+  }
+};
 
 /**
  * Create a single in-app notification for a specific recipient.
@@ -48,7 +74,7 @@ export const createNotification = async ({
     message: message.trim(),
     relatedEntityType,
     relatedEntityId,
-    metadata,
+    metadata: await withComplaintContext(relatedEntityType, relatedEntityId, metadata),
     isRead: false,
     readAt: null,
   });

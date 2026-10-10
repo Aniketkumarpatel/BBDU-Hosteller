@@ -474,6 +474,19 @@ export const triageComplaint = async (idOrComplaintId, triageData, triagedByUser
 };
 
 /**
+ * A warden may only hand complaints to staff of their own hostel. Staff with no hostel
+ * set are allowed (legacy data); staff of a different hostel are refused.
+ */
+const assertWardenMayAssignTo = (actor, assignee) => {
+  if (actor?.role !== ROLES.WARDEN || !actor.hostelId) return;
+  if (assignee.hostelId && String(assignee.hostelId) !== String(actor.hostelId)) {
+    const error = new Error('You can only assign complaints to staff of your own hostel');
+    error.statusCode = 403;
+    throw error;
+  }
+};
+
+/**
  * Get active staff eligible for complaint assignment
  */
 export const getEligibleAssignees = async (idOrComplaintId, requestingUser) => {
@@ -489,6 +502,16 @@ export const getEligibleAssignees = async (idOrComplaintId, requestingUser) => {
     isActive: true,
     role: { $in: [ROLES.HOSTEL_STAFF, ROLES.WARDEN] },
   };
+
+  // A warden must not be shown (or be able to assign to) staff of another hostel.
+  // Staff not yet tied to any hostel stay selectable so existing data keeps working.
+  if (requestingUser?.role === ROLES.WARDEN && requestingUser.hostelId) {
+    staffFilter.$or = [
+      { hostelId: requestingUser.hostelId },
+      { hostelId: null },
+      { hostelId: { $exists: false } },
+    ];
+  }
 
   // If complaint has a department, optionally filter or list all staff
   const staffMembers = await User.find(staffFilter)
@@ -567,6 +590,7 @@ export const assignComplaint = async (idOrComplaintId, { departmentId, assignedT
     error.statusCode = 400;
     throw error;
   }
+  assertWardenMayAssignTo(assignedByUser, assignee);
 
   // Deactivate any previous current assignments if they exist
   await ComplaintAssignment.updateMany(
@@ -695,6 +719,7 @@ export const reassignComplaint = async (idOrComplaintId, { assignedTo, reason, d
     error.statusCode = 400;
     throw error;
   }
+  assertWardenMayAssignTo(reassignedByUser, newAssignee);
 
   // Optional department update
   let targetDeptId = complaint.departmentId;
