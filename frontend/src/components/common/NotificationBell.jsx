@@ -110,7 +110,7 @@ export default function NotificationBell() {
     if (!complaintId) return null;
     const role = user?.role;
     if (role === 'STUDENT') return `/student/complaints/${complaintId}`;
-    if (role === 'WARDEN') return `/warden/complaints/${complaintId}`;
+    if (role === 'WARDEN') return IS_PILOT_MODE ? `/warden/problems/${complaintId}` : `/warden/complaints/${complaintId}`;
     if (role === 'HOSTEL_STAFF') return IS_PILOT_MODE ? `/staff/jobs/${complaintId}` : `/staff/complaints/${complaintId}`;
     if (role === 'AUTHORITY') return `/authority/complaints/${complaintId}`;
     if (role === 'SUPER_ADMIN') return `/warden/complaints/${complaintId}`;

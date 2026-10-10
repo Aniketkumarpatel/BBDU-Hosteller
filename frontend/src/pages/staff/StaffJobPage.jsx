@@ -148,7 +148,7 @@ export default function StaffJobPage() {
       {/* 1. Where, and where the job stands */}
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3">
-          <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
+          <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
             <Icon name="pin" className="h-6 w-6" />
           </span>
           <div>
@@ -248,7 +248,7 @@ export default function StaffJobPage() {
 
 function BackLink({ t }) {
   return (
-    <Link to="/staff/jobs" className="inline-flex h-12 items-center gap-2 rounded-xl pr-3 text-lg font-semibold text-indigo-700">
+    <Link to="/staff/jobs" className="inline-flex h-12 items-center gap-2 rounded-xl pr-3 text-lg font-semibold text-brand-700">
       <Icon name="back" className="h-6 w-6" />
       {t('job.back')}
     </Link>
