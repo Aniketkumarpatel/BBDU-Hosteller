@@ -267,9 +267,9 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto flex max-w-lg flex-col px-4 py-10">
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+      <div className="rounded-3xl bg-white p-6 shadow-[0_6px_20px_-6px_rgba(15,23,42,0.18)] ring-1 ring-black/5 sm:p-8">
         <div className="text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
@@ -309,7 +309,7 @@ export default function RegisterPage() {
               className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
                 formErrors.name
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-200'
+                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
               }`}
             />
             {formErrors.name && (
@@ -331,7 +331,7 @@ export default function RegisterPage() {
               className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
                 formErrors.email
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-200'
+                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
               }`}
             />
             {formErrors.email && (
@@ -354,7 +354,7 @@ export default function RegisterPage() {
                 className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
                   formErrors.studentId
                     ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                    : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-200'
+                    : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
                 }`}
               />
               {formErrors.studentId && (
@@ -371,7 +371,7 @@ export default function RegisterPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+919876543210"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-hidden focus:ring-2 focus:ring-brand-200"
               />
             </div>
           </div>
@@ -384,7 +384,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="text-xs text-indigo-600 hover:text-indigo-800"
+                className="text-xs text-brand-600 hover:text-brand-800"
               >
                 {showPassword ? 'Hide' : 'Show'}
               </button>
@@ -399,7 +399,7 @@ export default function RegisterPage() {
               className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
                 formErrors.password
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-200'
+                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
               }`}
             />
             {formErrors.password && (
@@ -421,7 +421,7 @@ export default function RegisterPage() {
               className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
                 formErrors.confirmPassword
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-200'
+                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
               }`}
             />
             {formErrors.confirmPassword && (
@@ -431,7 +431,7 @@ export default function RegisterPage() {
 
           {/* Section Divider: Hostel Allocation Dropdowns */}
           <div className="border-t border-slate-200 pt-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-700">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-brand-700">
               Hostel Accommodation Allocation
             </h3>
             <p className="text-[11px] text-slate-500">
@@ -452,7 +452,7 @@ export default function RegisterPage() {
               className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 focus:outline-hidden focus:ring-2 ${
                 formErrors.hostelId
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-200'
+                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
               }`}
             >
               <option value="">
@@ -482,7 +482,7 @@ export default function RegisterPage() {
               className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 disabled:bg-slate-100 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 ${
                 formErrors.blockId
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-200'
+                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
               }`}
             >
               <option value="">
@@ -512,7 +512,7 @@ export default function RegisterPage() {
               className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 disabled:bg-slate-100 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 ${
                 formErrors.floorId
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-200'
+                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
               }`}
             >
               <option value="">
@@ -545,7 +545,7 @@ export default function RegisterPage() {
               className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 disabled:bg-slate-100 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 ${
                 formErrors.roomNumber
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-indigo-500 focus:ring-indigo-200'
+                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
               }`}
             />
             {formErrors.roomNumber && (
@@ -556,7 +556,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300 cursor-pointer"
+            className="mt-2 flex w-full items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-brand-300 cursor-pointer"
           >
             {loading ? (
               <span className="flex items-center gap-2">
@@ -571,7 +571,7 @@ export default function RegisterPage() {
 
         <p className="mt-5 text-center text-xs text-slate-500">
           Already registered?{' '}
-          <Link to="/login" className="font-semibold text-indigo-600 hover:underline">
+          <Link to="/login" className="font-semibold text-brand-600 hover:underline">
             Sign in
           </Link>
         </p>

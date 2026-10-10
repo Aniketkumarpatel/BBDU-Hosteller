@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, getDashboardPathForRole } from '../context/AuthContext.jsx';
+import { useLanguage } from '../i18n/LanguageContext.jsx';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -10,6 +11,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   const { login } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -18,7 +20,7 @@ export default function LoginPage() {
     setError('');
 
     if (!email.trim() || !password) {
-      setError('Please provide both email and password.');
+      setError(t('login.err.empty'));
       return;
     }
 
@@ -31,11 +33,20 @@ export default function LoginPage() {
         : location.state?.from?.pathname || getDashboardPathForRole(user.role);
       navigate(target, { replace: true });
     } catch (err) {
-      setError(err.userMessage || err.message || 'Invalid email or password.');
+      // A 401 means wrong email or password; anything else keeps the server's message
+      setError(err?.response?.status === 401 ? t('login.err.wrong') : err.userMessage || err.message || t('login.err.wrong'));
     } finally {
       setLoading(false);
     }
   };
+
+  const demoAccounts = [
+    ['Student', 'student@bbdu.ac.in'],
+    ['Warden', 'warden@bbdu.ac.in'],
+    ['Staff', 'staff@bbdu.ac.in'],
+    ['Authority', 'authority@bbdu.ac.in'],
+    ['Admin', 'admin@bbdu.ac.in'],
+  ];
 
   const handleFillDemo = (demoEmail) => {
     setEmail(demoEmail);
@@ -43,29 +54,25 @@ export default function LoginPage() {
     setError('');
   };
 
+  const inputClass =
+    'mt-1.5 h-12 w-full rounded-xl border-2 border-slate-200 bg-white px-3.5 text-base text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-hidden focus:ring-4 focus:ring-brand-100';
+
   return (
-    <div className="mx-auto flex max-w-md flex-col px-4 py-12">
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">Sign in</h1>
-          <p className="mt-1 text-sm text-slate-500">Access your BBDU Hosteller portal</p>
-        </div>
+    <div className="mx-auto max-w-md px-4 py-8">
+      <div className="rounded-3xl bg-white p-6 shadow-[0_6px_20px_-6px_rgba(15,23,42,0.18)] ring-1 ring-black/5 sm:p-8">
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{t('login.title')}</h1>
+        <p className="mt-1 text-base text-slate-500">{t('login.subtitle')}</p>
 
         {error && (
-          <div className="mt-4 rounded-lg bg-red-50 p-3 text-xs text-red-700">
+          <div role="alert" className="mt-5 rounded-2xl bg-brand-50 p-3.5 text-base font-medium text-brand-800 ring-1 ring-brand-200">
             {error}
           </div>
         )}
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-              University Email
+            <label htmlFor="email" className="block text-sm font-semibold text-slate-700">
+              {t('login.email')}
             </label>
             <input
               id="email"
@@ -75,21 +82,21 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="e.g. student@bbdu.ac.in"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+              className={inputClass}
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between">
-              <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                Password
+              <label htmlFor="password" className="block text-sm font-semibold text-slate-700">
+                {t('login.password')}
               </label>
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="text-xs text-indigo-600 hover:text-indigo-800"
+                className="h-8 rounded-lg px-2 text-sm font-bold text-brand-600 hover:text-brand-800"
               >
-                {showPassword ? 'Hide' : 'Show'}
+                {showPassword ? t('pw.hide') : t('pw.show')}
               </button>
             </div>
             <input
@@ -100,72 +107,47 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-hidden focus:ring-2 focus:ring-indigo-200"
+              className={inputClass}
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="flex w-full items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-indigo-300"
+            className="flex h-14 w-full items-center justify-center rounded-2xl bg-brand-600 text-lg font-bold text-white shadow-[0_8px_18px_-8px_rgba(200,42,65,0.7)] transition hover:bg-brand-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-brand-300 disabled:shadow-none"
           >
             {loading ? (
               <span className="flex items-center gap-2">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Signing in...
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                {t('login.working')}
               </span>
             ) : (
-              'Sign in'
+              t('login.button')
             )}
           </button>
         </form>
 
-        <div className="mt-6 border-t border-slate-200 pt-5">
-          <p className="text-center text-xs text-slate-500">
-            Don't have an account?{' '}
-            <Link to="/register" className="font-semibold text-indigo-600 hover:underline">
-              Register as Student
+        <div className="mt-6 border-t border-slate-100 pt-5">
+          <p className="text-center text-base text-slate-500">
+            {t('login.noAccount')}{' '}
+            <Link to="/register" className="font-bold text-brand-600 hover:underline">
+              {t('login.register')}
             </Link>
           </p>
 
-          <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+          <div className="mt-5 rounded-2xl bg-slate-50 p-3.5 text-xs text-slate-600">
             <div className="font-semibold text-slate-700">Quick Demo Accounts (Password: Password@123)</div>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleFillDemo('student@bbdu.ac.in')}
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
-              >
-                Student
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('warden@bbdu.ac.in')}
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
-              >
-                Warden
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('staff@bbdu.ac.in')}
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
-              >
-                Staff
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('authority@bbdu.ac.in')}
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
-              >
-                Authority
-              </button>
-              <button
-                type="button"
-                onClick={() => handleFillDemo('admin@bbdu.ac.in')}
-                className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
-              >
-                Admin
-              </button>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {demoAccounts.map(([label, demoEmail]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => handleFillDemo(demoEmail)}
+                  className="h-9 rounded-full border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 hover:bg-brand-50 hover:text-brand-700"
+                >
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
