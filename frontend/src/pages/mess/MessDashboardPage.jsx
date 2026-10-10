@@ -5,10 +5,29 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import DashboardLayout from '../../layouts/DashboardLayout.jsx';
 import LoadingSpinner from '../../components/common/LoadingSpinner.jsx';
 import ErrorState from '../../components/common/ErrorState.jsx';
+import WeeklyMenuUploadModal from './WeeklyMenuUploadModal.jsx';
 
 const MEALS = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'];
 const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 const QUALITIES = ['EXCELLENT', 'GOOD', 'AVERAGE', 'POOR', 'VERY_POOR'];
+
+export const HOSTEL_TIMEZONE = 'Asia/Kolkata';
+
+export const getTodayDateString = (tz = HOSTEL_TIMEZONE) => {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+};
+
+export const getDayOfWeekFromDate = (dateStr, tz = HOSTEL_TIMEZONE) => {
+  if (!dateStr) return 'MONDAY';
+  const parts = String(dateStr).split('-').map(Number);
+  if (parts.length === 3) {
+    const [y, m, d] = parts;
+    const utcDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz }).format(utcDate).toUpperCase();
+  }
+  const d = new Date(dateStr);
+  return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz }).format(d).toUpperCase();
+};
 
 export default function MessDashboardPage() {
   const { user } = useAuth();
@@ -27,10 +46,15 @@ export default function MessDashboardPage() {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [notices, setNotices] = useState([]);
 
+  // Date-wise Menu State (Resolved specifically for selectedDate with IST Timezone)
+  const [selectedDate, setSelectedDate] = useState(() => getTodayDateString());
+  const [dateMenuData, setDateMenuData] = useState(null);
+  const [loadingDateMenu, setLoadingDateMenu] = useState(false);
+
   // Modals
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackMealType, setFeedbackMealType] = useState('LUNCH');
-  const [feedbackMealDate, setFeedbackMealDate] = useState(new Date().toISOString().split('T')[0]);
+  const [feedbackMealDate, setFeedbackMealDate] = useState(() => getTodayDateString());
   const [feedbackRating, setFeedbackRating] = useState(4);
   const [feedbackQuality, setFeedbackQuality] = useState('GOOD');
   const [feedbackTaste, setFeedbackTaste] = useState(4);
@@ -40,9 +64,12 @@ export default function MessDashboardPage() {
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
 
-  // Menu Modal
+  // Menu Modal (Supports Specific Calendar Date vs Recurring Weekly Timetable)
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [menuForm, setMenuForm] = useState({
+    scheduleType: 'DATE', // 'DATE' (specific calendar day) or 'WEEKLY' (recurring timetable)
+    date: getTodayDateString(),
     dayOfWeek: 'MONDAY',
     mealType: 'BREAKFAST',
     itemsText: '',
@@ -60,6 +87,45 @@ export default function MessDashboardPage() {
   });
   const [savingNotice, setSavingNotice] = useState(false);
 
+  const fetchDateMenu = async (messId, dateToFetch) => {
+    if (!messId || !dateToFetch) return;
+    try {
+      setLoadingDateMenu(true);
+      const res = await messService.getTodayMenu(messId, { date: dateToFetch });
+      if (res?.success) {
+        setDateMenuData(res.data);
+      }
+    } catch (err) {
+      console.error('Error fetching date menu:', err);
+    } finally {
+      setLoadingDateMenu(false);
+    }
+  };
+
+  const loadMessDetails = async (messId, targetDate = selectedDate) => {
+    try {
+      const [dashRes, menusRes, fbRes, analyticsRes, noticesRes, dateMenuRes] = await Promise.all([
+        messService.getMessDashboard({ messId }),
+        messService.getMenus(messId),
+        messService.getMessFeedbacks({ messId }),
+        messService.getFoodQualityAnalytics({ messId }),
+        messService.getNotices({ messId }),
+        messService.getTodayMenu(messId, { date: targetDate }),
+      ]);
+
+      if (dashRes.success) setDashboardData(dashRes.data);
+      if (menusRes.success) setWeeklyMenus(menusRes.data);
+      if (fbRes.success) setFeedbacks(fbRes.data);
+      if (analyticsRes.success) setAnalyticsData(analyticsRes.data);
+      if (noticesRes.success) setNotices(noticesRes.data);
+      if (dateMenuRes.success) setDateMenuData(dateMenuRes.data);
+    } catch (err) {
+      console.error('Error refreshing mess content:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchInitial = async () => {
     setLoading(true);
     setError(null);
@@ -67,9 +133,18 @@ export default function MessDashboardPage() {
       const messRes = await messService.getMesses();
       if (messRes.success && messRes.data.length > 0) {
         setMesses(messRes.data);
-        const defaultMess = messRes.data[0];
+        // Requirement 5: For students, match their actual allocated hostel mess
+        let matchedMess = null;
+        if (user?.hostelId) {
+          const userHId = user.hostelId?._id || user.hostelId;
+          matchedMess = messRes.data.find((m) => {
+            const mHId = m.hostelId?._id || m.hostelId;
+            return String(mHId) === String(userHId);
+          });
+        }
+        const defaultMess = matchedMess || messRes.data[0];
         setSelectedMessId(defaultMess._id);
-        await loadMessDetails(defaultMess._id);
+        await loadMessDetails(defaultMess._id, selectedDate);
       } else {
         setMesses([]);
         setLoading(false);
@@ -80,45 +155,21 @@ export default function MessDashboardPage() {
     }
   };
 
-  const loadMessDetails = async (messId) => {
-    try {
-      const [dashRes, menusRes, fbRes, analyticsRes, noticesRes] = await Promise.all([
-        messService.getMessDashboard({ messId }),
-        messService.getMenus(messId),
-        messService.getMessFeedbacks({ messId }),
-        messService.getFoodQualityAnalytics({ messId }),
-        messService.getNotices({ messId }),
-      ]);
-
-      if (dashRes.success) setDashboardData(dashRes.data);
-      if (menusRes.success) setWeeklyMenus(menusRes.data);
-      if (fbRes.success) setFeedbacks(fbRes.data);
-      if (analyticsRes.success) setAnalyticsData(analyticsRes.data);
-      if (noticesRes.success) setNotices(noticesRes.data);
-    } catch (err) {
-      console.error('Error refreshing mess content:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchInitial();
   }, []);
 
+  // Automatically refresh menu when calendar date changes or user selects new date
+  useEffect(() => {
+    if (selectedMessId && selectedDate) {
+      fetchDateMenu(selectedMessId, selectedDate);
+    }
+  }, [selectedMessId, selectedDate]);
+
   const handleMessChange = (e) => {
     const id = e.target.value;
     setSelectedMessId(id);
-    loadMessDetails(id);
-  };
-
-  // Navigation & Date State
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
-
-  const getDayOfWeekFromDate = (dateStr) => {
-    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-    const d = new Date(dateStr);
-    return days[d.getDay()];
+    loadMessDetails(id, selectedDate);
   };
 
   const handleDateChange = (newDateStr) => {
@@ -126,9 +177,10 @@ export default function MessDashboardPage() {
   };
 
   const changeDateByDays = (days) => {
-    const current = new Date(selectedDate);
-    current.setDate(current.getDate() + days);
-    setSelectedDate(current.toISOString().split('T')[0]);
+    const parts = selectedDate.split('-').map(Number);
+    const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + days, 12, 0, 0));
+    const newDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: HOSTEL_TIMEZONE }).format(d);
+    setSelectedDate(newDateStr);
   };
 
   // Submit Feedback Handler
@@ -186,7 +238,7 @@ export default function MessDashboardPage() {
     }
   };
 
-  // Save Menu Handler (Supports Save Draft or Publish Menu)
+  // Save Menu Handler (Supports Save Draft or Publish Menu for Date or Weekly Timetable)
   const handleSaveMenu = async (e, publishStatus = true) => {
     if (e && e.preventDefault) e.preventDefault();
     setSavingMenu(true);
@@ -197,8 +249,21 @@ export default function MessDashboardPage() {
         .filter(Boolean)
         .map((name) => ({ name, category: 'Main Course' }));
 
+      if (items.length === 0) {
+        alert('Please enter at least one food item (one per line).');
+        setSavingMenu(false);
+        return;
+      }
+
+      const isDateSchedule = menuForm.scheduleType === 'DATE';
+      const targetDate = isDateSchedule ? menuForm.date : null;
+      const resolvedDay = isDateSchedule
+        ? getDayOfWeekFromDate(menuForm.date)
+        : menuForm.dayOfWeek;
+
       await messService.createOrUpdateMenu(selectedMessId, {
-        dayOfWeek: menuForm.dayOfWeek,
+        date: targetDate,
+        dayOfWeek: resolvedDay,
         mealType: menuForm.mealType,
         menuItems: items,
         notes: menuForm.notes,
@@ -207,13 +272,19 @@ export default function MessDashboardPage() {
 
       setShowMenuModal(false);
       setMenuForm({
-        dayOfWeek: 'MONDAY',
+        scheduleType: 'DATE',
+        date: selectedDate,
+        dayOfWeek: activeDayOfWeek,
         mealType: 'BREAKFAST',
         itemsText: '',
         notes: '',
         isPublished: true,
       });
-      loadMessDetails(selectedMessId);
+
+      await Promise.all([
+        loadMessDetails(selectedMessId, selectedDate),
+        fetchDateMenu(selectedMessId, selectedDate),
+      ]);
     } catch (err) {
       alert(err?.response?.data?.message || 'Error saving menu');
     } finally {
@@ -229,7 +300,10 @@ export default function MessDashboardPage() {
       } else {
         await messService.publishMenu(menu._id);
       }
-      loadMessDetails(selectedMessId);
+      await Promise.all([
+        loadMessDetails(selectedMessId, selectedDate),
+        fetchDateMenu(selectedMessId, selectedDate),
+      ]);
     } catch (err) {
       alert('Error updating publication status');
     }
@@ -248,7 +322,7 @@ export default function MessDashboardPage() {
       });
       setShowNoticeModal(false);
       setNoticeForm({ title: '', message: '', priority: 'NORMAL' });
-      loadMessDetails(selectedMessId);
+      loadMessDetails(selectedMessId, selectedDate);
     } catch (err) {
       alert(err?.response?.data?.message || 'Error creating notice');
     } finally {
@@ -260,16 +334,21 @@ export default function MessDashboardPage() {
   const currentMess = messes.find((m) => m._id === selectedMessId) || dashboardData?.mess;
   const activeDayOfWeek = getDayOfWeekFromDate(selectedDate);
 
-  // Helper to find menu for day of week & meal type
+  // Helper to find menu for date or fallback to recurring day of week
   const getMenuForMeal = (meal) => {
-    // Look in weeklyMenus first
+    // 1. Priority: Date-specific menu resolved by backend for selectedDate
+    if (dateMenuData?.meals?.[meal]) {
+      return dateMenuData.meals[meal];
+    }
+
+    // 2. Fallback: Recurring weekly timetable matching activeDayOfWeek
     const found = weeklyMenus.find(
       (m) => m.dayOfWeek === activeDayOfWeek && m.mealType === meal
     );
     if (found) return found;
 
-    // Fallback to todayMenu if dates match today
-    const todayStr = new Date().toISOString().split('T')[0];
+    // 3. Fallback: todayMenu from initial payload if dates match today
+    const todayStr = getTodayDateString();
     if (selectedDate === todayStr && dashboardData?.todayMenu?.[meal]) {
       return dashboardData.todayMenu[meal];
     }
@@ -311,18 +390,24 @@ export default function MessDashboardPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
-              {messes.length > 1 && (
-                <select
-                  value={selectedMessId}
-                  onChange={handleMessChange}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs focus:ring-2 focus:ring-indigo-500"
-                >
-                  {messes.map((m) => (
-                    <option key={m._id} value={m._id}>
-                      {m.name} ({m.code})
-                    </option>
-                  ))}
-                </select>
+              {isStudent ? (
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/70 px-3 py-1.5 text-xs font-bold text-indigo-800">
+                  <span>🏛</span> {currentMess?.name || 'Allocated Mess'}
+                </span>
+              ) : (
+                messes.length > 1 && (
+                  <select
+                    value={selectedMessId}
+                    onChange={handleMessChange}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {messes.map((m) => (
+                      <option key={m._id} value={m._id}>
+                        {m.name} ({m.code})
+                      </option>
+                    ))}
+                  </select>
+                )
               )}
 
               {isStudent && (
@@ -349,8 +434,16 @@ export default function MessDashboardPage() {
               {canManage && (
                 <>
                   <button
+                    onClick={() => setShowUploadModal(true)}
+                    className="rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 flex items-center gap-1.5"
+                  >
+                    <span>📷</span> Upload Weekly Menu Photo
+                  </button>
+                  <button
                     onClick={() => {
                       setMenuForm({
+                        scheduleType: 'DATE',
+                        date: selectedDate,
                         dayOfWeek: activeDayOfWeek,
                         mealType: 'BREAKFAST',
                         itemsText: '',
@@ -569,9 +662,14 @@ export default function MessDashboardPage() {
           {activeTab === 'today' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-base font-bold text-slate-900">
-                  TODAY'S MESS MENU — <span className="text-indigo-600 font-extrabold">{selectedDate} ({activeDayOfWeek})</span>
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900">
+                    TODAY'S MESS MENU — <span className="text-indigo-600 font-extrabold">{selectedDate} ({activeDayOfWeek})</span>
+                  </h2>
+                  {loadingDateMenu && (
+                    <span className="text-[11px] font-medium text-slate-400 animate-pulse">Syncing…</span>
+                  )}
+                </div>
                 <span className="text-xs text-slate-500">
                   {isStudent ? 'Published menus for your allocated mess' : 'Live Resident View'}
                 </span>
@@ -603,24 +701,31 @@ export default function MessDashboardPage() {
                       className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-200 transition"
                     >
                       <div>
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div className="flex items-start justify-between border-b border-slate-100 pb-3">
                           <div>
                             <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wide">
                               {mealLabels[meal]}
                             </h3>
                             <span className="text-[10px] text-slate-400">{mealTimings}</span>
                           </div>
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                              mealMenu?.isPublished
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : rawMenu
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-slate-100 text-slate-500'
-                            }`}
-                          >
-                            {mealMenu?.isPublished ? 'Published' : rawMenu ? 'Draft (Hidden from students)' : 'Unscheduled'}
-                          </span>
+                          <div className="flex flex-col items-end gap-1">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                mealMenu?.isPublished
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : rawMenu
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-slate-100 text-slate-500'
+                              }`}
+                            >
+                              {mealMenu?.isPublished ? 'Published' : rawMenu ? 'Draft (Hidden from students)' : 'Unscheduled'}
+                            </span>
+                            {mealMenu?.isScheduledOverride && (
+                              <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-extrabold text-indigo-700 border border-indigo-100">
+                                📅 Date Special
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <div className="mt-3.5 space-y-2">
@@ -692,6 +797,8 @@ export default function MessDashboardPage() {
                   <button
                     onClick={() => {
                       setMenuForm({
+                        scheduleType: 'WEEKLY',
+                        date: selectedDate,
                         dayOfWeek: activeDayOfWeek,
                         mealType: 'BREAKFAST',
                         itemsText: '',
@@ -728,7 +835,18 @@ export default function MessDashboardPage() {
                     ) : (
                       weeklyMenus.map((menu) => (
                         <tr key={menu._id} className="hover:bg-slate-50 transition">
-                          <td className="px-4 py-3 font-bold text-slate-800">{menu.dayOfWeek}</td>
+                          <td className="px-4 py-3 font-bold text-slate-800">
+                            <div>{menu.dayOfWeek}</div>
+                            {menu.date ? (
+                              <span className="inline-block mt-0.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">
+                                📅 {menu.date}
+                              </span>
+                            ) : (
+                              <span className="inline-block mt-0.5 text-[10px] font-normal text-slate-400">
+                                Recurring
+                              </span>
+                            )}
+                          </td>
                           <td className="px-4 py-3 font-semibold text-indigo-700">{menu.mealType}</td>
                           <td className="px-4 py-3 max-w-md">
                             <div className="flex flex-wrap gap-1.5">
@@ -758,6 +876,8 @@ export default function MessDashboardPage() {
                               <button
                                 onClick={() => {
                                   setMenuForm({
+                                    scheduleType: menu.date ? 'DATE' : 'WEEKLY',
+                                    date: menu.date || selectedDate,
                                     dayOfWeek: menu.dayOfWeek,
                                     mealType: menu.mealType,
                                     itemsText: menu.menuItems?.map((i) => i.name).join('\n') || '',
@@ -1204,13 +1324,80 @@ export default function MessDashboardPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-2">
+              {/* Schedule Mode Selector */}
+              <div>
+                <label className="font-semibold text-slate-700 block mb-1">Schedule Mode *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMenuForm((prev) => ({
+                        ...prev,
+                        scheduleType: 'DATE',
+                        date: prev.date || selectedDate,
+                        dayOfWeek: getDayOfWeekFromDate(prev.date || selectedDate),
+                      }))
+                    }
+                    className={`rounded-lg py-2 px-3 text-center text-xs font-bold border transition ${
+                      menuForm.scheduleType === 'DATE'
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-2xs'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    📅 Specific Calendar Date
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMenuForm((prev) => ({
+                        ...prev,
+                        scheduleType: 'WEEKLY',
+                      }))
+                    }
+                    className={`rounded-lg py-2 px-3 text-center text-xs font-bold border transition ${
+                      menuForm.scheduleType === 'WEEKLY'
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-2xs'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    🔄 Weekly Recurring
+                  </button>
+                </div>
+              </div>
+
+              {menuForm.scheduleType === 'DATE' ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="font-semibold text-slate-700">Scheduled Date *</label>
+                    <input
+                      type="date"
+                      value={menuForm.date}
+                      onChange={(e) => {
+                        const newD = e.target.value;
+                        setMenuForm((prev) => ({
+                          ...prev,
+                          date: newD,
+                          dayOfWeek: getDayOfWeekFromDate(newD),
+                        }));
+                      }}
+                      className="mt-1 w-full rounded-lg border border-slate-300 p-2 font-bold text-slate-800"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold text-slate-700">Day of Week</label>
+                    <div className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 p-2 font-bold text-indigo-700 uppercase">
+                      {getDayOfWeekFromDate(menuForm.date)}
+                    </div>
+                  </div>
+                </div>
+              ) : (
                 <div>
                   <label className="font-semibold text-slate-700">Day of Week *</label>
                   <select
                     value={menuForm.dayOfWeek}
                     onChange={(e) => setMenuForm({ ...menuForm, dayOfWeek: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-slate-300 p-2"
+                    className="mt-1 w-full rounded-lg border border-slate-300 p-2 font-medium"
                   >
                     {DAYS.map((d) => (
                       <option key={d} value={d}>
@@ -1219,20 +1406,21 @@ export default function MessDashboardPage() {
                     ))}
                   </select>
                 </div>
-                <div>
-                  <label className="font-semibold text-slate-700">Meal Type *</label>
-                  <select
-                    value={menuForm.mealType}
-                    onChange={(e) => setMenuForm({ ...menuForm, mealType: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-slate-300 p-2"
-                  >
-                    {MEALS.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              )}
+
+              <div>
+                <label className="font-semibold text-slate-700">Meal Type *</label>
+                <select
+                  value={menuForm.mealType}
+                  onChange={(e) => setMenuForm({ ...menuForm, mealType: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-slate-300 p-2 font-medium"
+                >
+                  {MEALS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -1357,6 +1545,16 @@ export default function MessDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Weekly Menu Photo Upload & OCR Review Modal */}
+      <WeeklyMenuUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        messId={selectedMessId}
+        onSchedulePublished={() => {
+          loadMessDetails(selectedMessId, selectedDate);
+        }}
+      />
     </DashboardLayout>
   );
 }

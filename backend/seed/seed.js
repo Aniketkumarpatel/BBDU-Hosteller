@@ -107,9 +107,9 @@ export const seedDatabase = async () => {
   let firstRoom = null;
 
   for (const hData of OFFICIAL_HOSTELS) {
-    let hostel = await Hostel.findOne({ name: hData.name });
+    let hostel = await Hostel.findOne({ code: hData.code });
     if (!hostel) {
-      hostel = await Hostel.findOne({ code: hData.code });
+      hostel = await Hostel.findOne({ name: hData.name });
     }
     if (!hostel) {
       hostel = await Hostel.create({
@@ -149,17 +149,19 @@ export const seedDatabase = async () => {
             floorNumber: floorNum,
             name: `${floorNum}`,
           });
-          console.log(`[seed] Created Floor ${floorNum} for Block ${blockNum}, ${hostel.name}`);
         }
 
         if (firstBlock && firstBlock._id.equals(block._id) && !firstFloor) firstFloor = floor;
 
-        // Create Rooms: 101-105 for Floor 1, 201-205 for Floor 2, 301-305 for Floor 3
+        // Batch Create Rooms if not already present
         const roomNumbers = [1, 2, 3, 4, 5].map((idx) => `${floorNum}0${idx}`);
+        const existingRooms = await Room.find({ floorId: floor._id, roomNumber: { $in: roomNumbers } });
+        const existingSet = new Set(existingRooms.map((r) => r.roomNumber));
+        const toCreate = [];
+
         for (const rNum of roomNumbers) {
-          let room = await Room.findOne({ floorId: floor._id, roomNumber: rNum });
-          if (!room) {
-            room = await Room.create({
+          if (!existingSet.has(rNum)) {
+            toCreate.push({
               hostelId: hostel._id,
               blockId: block._id,
               floorId: floor._id,
@@ -169,10 +171,20 @@ export const seedDatabase = async () => {
               currentOccupancy: 0,
             });
           }
-          if (firstFloor && firstFloor._id.equals(floor._id) && !firstRoom) firstRoom = room;
+        }
+
+        if (toCreate.length > 0) {
+          const inserted = await Room.insertMany(toCreate);
+          if (firstFloor && firstFloor._id.equals(floor._id) && !firstRoom) firstRoom = inserted[0];
+        } else if (firstFloor && firstFloor._id.equals(floor._id) && !firstRoom && existingRooms.length > 0) {
+          firstRoom = existingRooms[0];
         }
       }
     }
+  }
+
+  if (!firstRoom) {
+    firstRoom = await Room.findOne({ floorId: firstFloor?._id });
   }
 
   // 3. Demo Users
@@ -208,7 +220,13 @@ export const seedDatabase = async () => {
       await User.create(userData);
       console.log(`[seed] Created demo user: ${cred.email} (${cred.role})`);
     } else {
-      console.log(`[seed] User already exists: ${cred.email}`);
+      existing.passwordHash = defaultPasswordHash;
+      existing.isActive = true;
+      if (cred.role === ROLES.WARDEN || cred.role === ROLES.HOSTEL_STAFF) {
+        if (!existing.hostelId) existing.hostelId = firstHostel._id;
+      }
+      await existing.save();
+      console.log(`[seed] Updated demo user password: ${cred.email}`);
     }
   }
 

@@ -17,6 +17,7 @@ export const sanitizeUser = (user) => {
 
   return {
     id,
+    _id: id,
     name: raw.name,
     email: raw.email,
     phone: raw.phone || undefined,

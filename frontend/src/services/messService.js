@@ -28,8 +28,8 @@ export const messService = {
     return res.data;
   },
 
-  getTodayMenu: async (messId) => {
-    const res = await api.get(`/messes/${messId}/menus/today`);
+  getTodayMenu: async (messId, params) => {
+    const res = await api.get(`/messes/${messId}/menus/today`, { params });
     return res.data;
   },
 
@@ -45,6 +45,21 @@ export const messService = {
 
   unpublishMenu: async (menuId) => {
     const res = await api.post(`/messes/menus/${menuId}/unpublish`);
+    return res.data;
+  },
+
+  // Weekly Timetable Photo / Document OCR & Bulk Publish
+  uploadWeeklyMenuPhoto: async (messId, formData) => {
+    const res = await api.post(`/messes/${messId}/timetable/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return res.data;
+  },
+
+  publishWeeklySchedule: async (messId, schedule) => {
+    const res = await api.post(`/messes/${messId}/timetable/publish`, { schedule });
     return res.data;
   },
 

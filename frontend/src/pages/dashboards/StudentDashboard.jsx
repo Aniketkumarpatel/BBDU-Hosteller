@@ -48,6 +48,7 @@ export default function StudentDashboard() {
   const [outpasses, setOutpasses] = useState(() => studentDashboardCache?.outpasses || []);
   const [messFeedbacks, setMessFeedbacks] = useState(() => studentDashboardCache?.messFeedbacks || []);
   const [unreadCount, setUnreadCount] = useState(() => studentDashboardCache?.unreadCount || 0);
+  const [todayMenuData, setTodayMenuData] = useState(() => studentDashboardCache?.todayMenuData || null);
   const [loading, setLoading] = useState(() => !studentDashboardCache);
   const [error, setError] = useState(null);
 
@@ -57,7 +58,7 @@ export default function StudentDashboard() {
     }
     setError(null);
     try {
-      const [statsRes, complaintsRes, noticesRes, requestsRes, outpassesRes, feedbacksRes, unreadRes] = await Promise.allSettled([
+      const [statsRes, complaintsRes, noticesRes, requestsRes, outpassesRes, feedbacksRes, unreadRes, messesRes] = await Promise.allSettled([
         dashboardService.getDashboardStats(),
         complaintService.getMyComplaints({ limit: 10 }),
         studentServicesService.getNotices({ limit: 4 }),
@@ -65,6 +66,7 @@ export default function StudentDashboard() {
         outpassService.getOutpasses({ limit: 10 }),
         messService.getMessFeedbacks({ limit: 5 }),
         getUnreadCount(),
+        messService.getMesses(),
       ]);
 
       let newStats = studentDashboardCache?.statsData || null;
@@ -74,6 +76,7 @@ export default function StudentDashboard() {
       let newOutpasses = studentDashboardCache?.outpasses || [];
       let newFeedbacks = studentDashboardCache?.messFeedbacks || [];
       let newUnread = studentDashboardCache?.unreadCount || 0;
+      let newMenuData = studentDashboardCache?.todayMenuData || null;
 
       if (statsRes.status === 'fulfilled' && statsRes.value?.success) {
         newStats = statsRes.value.data;
@@ -118,6 +121,29 @@ export default function StudentDashboard() {
         setUnreadCount(newUnread);
       }
 
+      // Requirement 8: Fetch today's menu for student's allocated mess
+      if (messesRes.status === 'fulfilled' && messesRes.value?.success && messesRes.value.data?.length > 0) {
+        const messes = messesRes.value.data;
+        let matchedMess = null;
+        if (user?.hostelId) {
+          const userHId = user.hostelId?._id || user.hostelId;
+          matchedMess = messes.find((m) => {
+            const mHId = m.hostelId?._id || m.hostelId;
+            return String(mHId) === String(userHId);
+          });
+        }
+        const targetMess = matchedMess || messes[0];
+        try {
+          const menuRes = await messService.getTodayMenu(targetMess._id);
+          if (menuRes?.success) {
+            newMenuData = menuRes.data;
+            setTodayMenuData(newMenuData);
+          }
+        } catch {
+          // Soft fail
+        }
+      }
+
       studentDashboardCache = {
         statsData: newStats,
         recentComplaints: newComplaints,
@@ -126,6 +152,7 @@ export default function StudentDashboard() {
         outpasses: newOutpasses,
         messFeedbacks: newFeedbacks,
         unreadCount: newUnread,
+        todayMenuData: newMenuData,
       };
     } catch (err) {
       if (!studentDashboardCache) {
@@ -139,6 +166,33 @@ export default function StudentDashboard() {
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    const loadMenu = async () => {
+      try {
+        const messesRes = await messService.getMesses();
+        if (messesRes.success && messesRes.data?.length > 0) {
+          const messes = messesRes.data;
+          let matchedMess = null;
+          const studentHostelId = user?.hostelId?._id || user?.hostelId;
+          if (studentHostelId) {
+            matchedMess = messes.find((m) => {
+              const mHId = m.hostelId?._id || m.hostelId;
+              return String(mHId) === String(studentHostelId);
+            });
+          }
+          const targetMess = matchedMess || messes[0];
+          const menuRes = await messService.getTodayMenu(targetMess._id);
+          if (menuRes?.success) {
+            setTodayMenuData(menuRes.data);
+          }
+        }
+      } catch (err) {
+        console.error('Student menu load error:', err);
+      }
+    };
+    loadMenu();
+  }, [user]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -382,6 +436,77 @@ export default function StudentDashboard() {
               </div>
               <p className="mt-2 text-2xl font-extrabold text-purple-600">{unreadCount}</p>
               <p className="mt-0.5 text-[11px] text-slate-400">Unread notifications</p>
+            </div>
+          </div>
+
+          {/* 4. TODAY'S MESS MENU CARDS (Requirement 8) */}
+          <div className="rounded-xl border border-slate-200/90 bg-white p-5 shadow-2xs space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <span>🍽</span> Today's Mess Menu — {todayMenuData?.date ? `${todayMenuData.date} (${todayMenuData.dayOfWeek})` : 'Live Schedule'}
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Automatic daily dining timetable for your allocated hostel mess
+                </p>
+              </div>
+              <Link
+                to="/mess"
+                className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
+              >
+                Full Mess &amp; Rate Meals &rarr;
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'].map((meal) => {
+                const mealData = todayMenuData?.meals?.[meal];
+                const timings = {
+                  BREAKFAST: '07:30 AM – 09:30 AM',
+                  LUNCH: '12:30 PM – 02:30 PM',
+                  SNACKS: '04:30 PM – 06:00 PM',
+                  DINNER: '07:30 PM – 09:30 PM',
+                }[meal];
+
+                return (
+                  <div
+                    key={meal}
+                    className="flex flex-col justify-between rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 hover:border-indigo-200 transition"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                        <div>
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                            {meal.charAt(0) + meal.slice(1).toLowerCase()}
+                          </h3>
+                          <span className="text-[10px] text-slate-400">{timings}</span>
+                        </div>
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                            mealData?.isPublished
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {mealData?.isPublished ? 'Published' : 'Unscheduled'}
+                        </span>
+                      </div>
+
+                      <div className="mt-2.5 space-y-1 min-h-[50px]">
+                        {mealData?.menuItems && mealData.menuItems.length > 0 ? (
+                          mealData.menuItems.slice(0, 4).map((it, i) => (
+                            <p key={i} className="text-xs font-semibold text-slate-700 truncate">
+                              • {it.name}
+                            </p>
+                          ))
+                        ) : (
+                          <p className="text-xs text-slate-400 italic pt-2">No menu scheduled</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

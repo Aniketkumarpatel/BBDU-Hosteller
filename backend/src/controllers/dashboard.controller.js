@@ -7,6 +7,7 @@ import Floor from '../models/Floor.js';
 import Room from '../models/Room.js';
 import Department from '../models/Department.js';
 import Complaint from '../models/Complaint.js';
+import MaintenanceWorkOrder from '../models/MaintenanceWorkOrder.js';
 import SlaRule from '../models/SlaRule.js';
 import EscalationRule from '../models/EscalationRule.js';
 import { sanitizeUser } from '../utils/userSerializer.js';
@@ -347,15 +348,61 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
       hostelStats = { roomsCount, studentsCount };
     }
 
-    const [slaActive, slaBreached, dueSoon, escalated] = await Promise.all([
-      Complaint.countDocuments({ assignedTo: _id, slaStatus: 'ACTIVE' }),
-      Complaint.countDocuments({ assignedTo: _id, slaStatus: 'BREACHED' }),
+    const staffOrFilter = [{ assignedTo: _id }];
+    if (staff.departmentId) {
+      staffOrFilter.push({ departmentId: staff.departmentId._id });
+    }
+
+    const [
+      slaActive,
+      slaBreached,
+      dueSoon,
+      escalated,
+      countAssigned,
+      countAcknowledged,
+      countInProgress,
+      countReopened,
+      countVerification,
+      recentAssignedComplaints,
+      recentWorkOrders,
+    ] = await Promise.all([
+      Complaint.countDocuments({ $or: staffOrFilter, slaStatus: 'ACTIVE' }),
+      Complaint.countDocuments({ $or: staffOrFilter, slaStatus: 'BREACHED' }),
       Complaint.countDocuments({
-        assignedTo: _id,
+        $or: staffOrFilter,
         slaStatus: 'ACTIVE',
         slaDueAt: { $gte: now, $lte: fourHoursFromNow },
       }),
-      Complaint.countDocuments({ assignedTo: _id, currentEscalationLevel: { $gt: 0 } }),
+      Complaint.countDocuments({ $or: staffOrFilter, currentEscalationLevel: { $gt: 0 } }),
+      Complaint.countDocuments({ $or: staffOrFilter, status: 'ASSIGNED' }),
+      Complaint.countDocuments({ $or: staffOrFilter, status: 'ACKNOWLEDGED' }),
+      Complaint.countDocuments({ $or: staffOrFilter, status: 'IN_PROGRESS' }),
+      Complaint.countDocuments({ $or: staffOrFilter, status: 'REOPENED' }),
+      Complaint.countDocuments({ $or: staffOrFilter, status: 'STUDENT_VERIFICATION' }),
+      Complaint.find({
+        $or: staffOrFilter,
+        status: { $nin: ['CLOSED', 'REJECTED'] },
+      })
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .limit(8)
+        .populate('studentId', 'name email studentId phone')
+        .populate('hostelId', 'name code')
+        .populate('blockId', 'name')
+        .populate('roomId', 'roomNumber')
+        .populate('departmentId', 'name code')
+        .populate('assignedTo', 'name email employeeId')
+        .lean(),
+      MaintenanceWorkOrder.find({
+        $or: [{ assignedTo: _id }, ...(staff.hostelId ? [{ hostelId: staff.hostelId._id }] : [])],
+        status: { $nin: ['COMPLETED', 'CANCELLED'] },
+      })
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .limit(5)
+        .populate('hostelId', 'name')
+        .populate('roomId', 'roomNumber')
+        .populate('departmentId', 'name')
+        .populate('assignedTo', 'name employeeId')
+        .lean(),
     ]);
 
     return res.status(200).json({
@@ -372,6 +419,16 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
           dueSoon,
           escalated,
         },
+        taskMetrics: {
+          assigned: countAssigned,
+          acknowledged: countAcknowledged,
+          inProgress: countInProgress,
+          reopened: countReopened,
+          verification: countVerification,
+          totalActive: countAssigned + countAcknowledged + countInProgress + countReopened + countVerification,
+        },
+        assignedComplaints: recentAssignedComplaints,
+        assignedWorkOrders: recentWorkOrders,
       },
     });
   }

@@ -13,7 +13,10 @@ import {
   handleUnpublishMenu,
   handleGetMessDashboard,
   handleGetFoodQualityAnalytics,
+  handleUploadWeeklyMenuPhoto,
+  handleConfirmWeeklySchedule,
 } from '../controllers/mess.controller.js';
+import { handleMenuUpload } from '../middleware/menuUpload.js';
 
 const router = Router();
 
@@ -45,6 +48,21 @@ router.post(
   '/:messId/menus',
   requireRole(ROLES.SUPER_ADMIN, ROLES.AUTHORITY, ROLES.WARDEN, ROLES.HOSTEL_STAFF),
   handleCreateOrUpdateMenu
+);
+
+// Upload & Extract Weekly Menu Timetable Photo/PDF (Review pipeline)
+router.post(
+  '/:messId/timetable/upload',
+  requireRole(ROLES.SUPER_ADMIN, ROLES.AUTHORITY, ROLES.WARDEN, ROLES.HOSTEL_STAFF),
+  handleMenuUpload,
+  handleUploadWeeklyMenuPhoto
+);
+
+// Confirm and Bulk Publish Weekly Timetable Schedule
+router.post(
+  '/:messId/timetable/publish',
+  requireRole(ROLES.SUPER_ADMIN, ROLES.AUTHORITY, ROLES.WARDEN, ROLES.HOSTEL_STAFF),
+  handleConfirmWeeklySchedule
 );
 
 // Menu Publishing Actions

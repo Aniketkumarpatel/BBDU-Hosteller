@@ -46,6 +46,12 @@ const messMenuSchema = new mongoose.Schema(
       required: [true, 'Mess reference is required'],
       index: true,
     },
+    date: {
+      type: String, // 'YYYY-MM-DD' calendar date, null for recurring weekly templates
+      trim: true,
+      default: null,
+      index: true,
+    },
     dayOfWeek: {
       type: String,
       required: [true, 'Day of week is required'],
@@ -97,7 +103,7 @@ const messMenuSchema = new mongoose.Schema(
   buildSchemaOptions()
 );
 
-messMenuSchema.index({ messId: 1, dayOfWeek: 1, mealType: 1 }, { unique: true });
+messMenuSchema.index({ messId: 1, date: 1, dayOfWeek: 1, mealType: 1 }, { unique: true });
 
 const MessMenu = mongoose.models.MessMenu || mongoose.model('MessMenu', messMenuSchema);
 export default MessMenu;

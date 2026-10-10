@@ -120,11 +120,17 @@ export default function StaffComplaintsPage() {
     );
   };
 
-  const currentUserId = user?._id || user?.id;
+  const currentUserId = String(user?._id || user?.id || '');
+  const userDeptId = String(user?.departmentId?._id || user?.departmentId || '');
 
   const myComplaints = complaints.filter((c) => {
-    const assignedId = c.assignedTo?._id || c.assignedTo;
-    return assignedId === currentUserId || user?.role === 'SUPER_ADMIN';
+    if (user?.role === 'SUPER_ADMIN' || user?.role === 'WARDEN') return true;
+    const assignedId = String(c.assignedTo?._id || c.assignedTo || '');
+    const complaintDeptId = String(c.departmentId?._id || c.departmentId || '');
+    return (
+      (assignedId && assignedId === currentUserId) ||
+      (userDeptId && complaintDeptId && userDeptId === complaintDeptId)
+    );
   });
 
   const countAssigned          = myComplaints.filter((c) => c.status === 'ASSIGNED').length;

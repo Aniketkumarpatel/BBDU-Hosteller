@@ -7,6 +7,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner.jsx';
 import ErrorState from '../../components/common/ErrorState.jsx';
 import DashboardCard from '../../components/common/DashboardCard.jsx';
 import StatusBadge from '../../components/common/StatusBadge.jsx';
+import messService from '../../services/messService.js';
 import { IS_PILOT_MODE } from '../../config/pilot.js';
 
 let wardenDashboardCache = null;
@@ -14,6 +15,7 @@ let wardenDashboardCache = null;
 export default function WardenDashboard() {
   const { user } = useAuth();
   const [data, setData] = useState(() => wardenDashboardCache || null);
+  const [todayMenuData, setTodayMenuData] = useState(null);
   const [loading, setLoading] = useState(() => !wardenDashboardCache);
   const [error, setError] = useState(null);
 
@@ -23,12 +25,37 @@ export default function WardenDashboard() {
     }
     setError(null);
     try {
-      const res = await dashboardService.getDashboardStats();
-      if (res.success) {
-        wardenDashboardCache = res.data;
-        setData(res.data);
+      const [res, messesRes] = await Promise.allSettled([
+        dashboardService.getDashboardStats(),
+        messService.getMesses(),
+      ]);
+
+      if (res.status === 'fulfilled' && res.value.success) {
+        wardenDashboardCache = res.value.data;
+        setData(res.value.data);
       } else if (!wardenDashboardCache) {
-        setError(res.message || 'Failed to load warden dashboard');
+        setError(res.reason?.message || 'Failed to load warden dashboard');
+      }
+
+      if (messesRes.status === 'fulfilled' && messesRes.value?.success && messesRes.value.data?.length > 0) {
+        const messes = messesRes.value.data;
+        let matchedMess = null;
+        if (user?.hostelId) {
+          const userHId = user.hostelId?._id || user.hostelId;
+          matchedMess = messes.find((m) => {
+            const mHId = m.hostelId?._id || m.hostelId;
+            return String(mHId) === String(userHId);
+          });
+        }
+        const targetMess = matchedMess || messes[0];
+        try {
+          const menuRes = await messService.getTodayMenu(targetMess._id);
+          if (menuRes?.success) {
+            setTodayMenuData(menuRes.data);
+          }
+        } catch {
+          // Soft ignore
+        }
       }
     } catch (err) {
       if (!wardenDashboardCache) {
@@ -296,6 +323,79 @@ export default function WardenDashboard() {
                 <span className="text-xl font-bold text-purple-700">{data?.slaStats?.escalated ?? 0}</span>
                 <span className="block text-[11px] font-semibold text-purple-900 mt-0.5">Escalated issues</span>
               </div>
+            </div>
+          </div>
+
+          {/* Today's Mess Menu & Weekly Timetable Management (Requirement 9) */}
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <span>🍽</span> Today's Mess Menu &amp; Dining Schedule — {todayMenuData?.date ? `${todayMenuData.date} (${todayMenuData.dayOfWeek})` : 'Live Schedule'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Published daily menu for residents. Weekly recurring schedules apply automatically each day.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/mess"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-indigo-700 transition"
+                >
+                  <span>📷</span> Manage Weekly Menu Photo &rarr;
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'].map((meal) => {
+                const mealData = todayMenuData?.meals?.[meal];
+                const timings = {
+                  BREAKFAST: '07:30 AM – 09:30 AM',
+                  LUNCH: '12:30 PM – 02:30 PM',
+                  SNACKS: '04:30 PM – 06:00 PM',
+                  DINNER: '07:30 PM – 09:30 PM',
+                }[meal];
+
+                return (
+                  <div
+                    key={meal}
+                    className="flex flex-col justify-between rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 hover:border-indigo-200 transition"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                            {meal.charAt(0) + meal.slice(1).toLowerCase()}
+                          </h4>
+                          <span className="text-[10px] text-slate-400">{timings}</span>
+                        </div>
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                            mealData?.isPublished
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-200 text-slate-600'
+                          }`}
+                        >
+                          {mealData?.isPublished ? 'Published' : 'Unscheduled'}
+                        </span>
+                      </div>
+
+                      <div className="mt-2.5 space-y-1 min-h-[45px]">
+                        {mealData?.menuItems && mealData.menuItems.length > 0 ? (
+                          mealData.menuItems.slice(0, 3).map((it, i) => (
+                            <p key={i} className="text-xs font-semibold text-slate-700 truncate">
+                              • {it.name}
+                            </p>
+                          ))
+                        ) : (
+                          <p className="text-xs text-slate-400 italic pt-1.5">No menu scheduled</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

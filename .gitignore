@@ -28,6 +28,7 @@ pnpm-debug.log*
 
 # Uploads (user generated)
 backend/uploads/
+*.traineddata
 
 # OS files
 .DS_Store

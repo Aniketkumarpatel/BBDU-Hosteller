@@ -58,7 +58,7 @@ export const analyticsLimiter = rateLimit({
 export const globalApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 1000,
-  skip: isTest,
+  skip: (req) => isTest() || req.path === '/health' || req.originalUrl?.includes('/health'),
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: {

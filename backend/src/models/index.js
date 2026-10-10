@@ -123,5 +123,10 @@ export const allModels = {
  * constraints are guaranteed to be in place before the API accepts traffic.
  */
 export const initModels = async () => {
+  try {
+    await MessMenu.collection.dropIndex('messId_1_dayOfWeek_1_mealType_1');
+  } catch {
+    // Ignore if legacy index does not exist
+  }
   await Promise.all(Object.values(allModels).map((m) => m.init()));
 };

@@ -22,7 +22,10 @@ import {
 import { NOTIFICATION_TYPES } from '../constants/notification.constants.js';
 import { ROLES } from '../constants/roles.js';
 import { createNotification, createBatchNotifications } from './notification.service.js';
+import { getTodayDateString, getDayOfWeek, HOSTEL_TIMEZONE } from '../utils/date.js';
 import ApiError from '../utils/ApiError.js';
+import { extractWeeklyMenuFromFile } from './ocr.service.js';
+import { OFFICIAL_BBDU_MENU } from '../constants/officialMenu.js';
 
 // ==========================================
 // ID GENERATORS
@@ -97,14 +100,6 @@ export const ensureMessSeeded = async () => {
     const hostels = await Hostel.find().lean();
     if (!hostels || hostels.length === 0) return;
 
-    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-    const sampleMenus = {
-      BREAKFAST: ['Aloo Paratha', 'Curd', 'Pickle', 'Tea/Coffee', 'Sprouts'],
-      LUNCH: ['Paneer Butter Masala', 'Dal Tadka', 'Jeera Rice', 'Roti', 'Salad', 'Gulab Jamun'],
-      SNACKS: ['Samosa', 'Mint Chutney', 'Tea/Coffee', 'Biscuits'],
-      DINNER: ['Mix Veg', 'Dal Fry', 'Steamed Rice', 'Chapati', 'Kheer'],
-    };
-
     for (const hostel of hostels) {
       const code = (hostel.code || hostel.name.substring(0, 3)).toUpperCase() + '-MESS-' + Math.floor(Math.random() * 1000);
       const messId = await generateMessId();
@@ -118,16 +113,19 @@ export const ensureMessSeeded = async () => {
         isActive: true,
       });
 
+      const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
       for (const day of days) {
         for (const mealType of ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER']) {
+          const items = OFFICIAL_BBDU_MENU[day]?.[mealType] || ['Meal Item'];
           const menuId = await generateMenuId();
           await MessMenu.create({
             menuId,
             messId: mess._id,
+            date: null,
             dayOfWeek: day,
             mealType,
-            menuItems: sampleMenus[mealType],
-            notes: `Freshly prepared ${mealType.toLowerCase()} items for ${day}`,
+            menuItems: items.map((name) => ({ name, category: 'Main Course' })),
+            notes: `Official BBDU Hostel Timetable (w.e.f. 22.09.2026) for ${day}`,
             isPublished: true,
           });
         }
@@ -205,20 +203,37 @@ export const updateMess = async (id, data, user) => {
 // ==========================================
 
 export const createOrUpdateMenu = async (messId, data, user) => {
-  const { dayOfWeek, mealType, menuItems, notes, effectiveDate, isPublished } = data;
+  const { date, dayOfWeek, mealType, menuItems, notes, effectiveDate, isPublished } = data;
 
-  if (!dayOfWeek || !mealType) {
-    throw new ApiError(400, 'dayOfWeek and mealType are required');
+  if (!mealType) {
+    throw new ApiError(400, 'mealType is required');
   }
 
-  const normalizedDay = dayOfWeek.trim().toUpperCase();
   const normalizedMeal = mealType.trim().toUpperCase();
-
-  if (!DAYS_OF_WEEK.includes(normalizedDay)) {
-    throw new ApiError(400, `Invalid day of week: ${dayOfWeek}`);
-  }
   if (!MEAL_TYPE_VALUES.includes(normalizedMeal)) {
     throw new ApiError(400, `Invalid meal type: ${mealType}`);
+  }
+
+  let normalizedDate = null;
+  let resolvedDay = dayOfWeek ? dayOfWeek.trim().toUpperCase() : null;
+
+  if (date && typeof date === 'string' && date.trim()) {
+    const trimmedDate = date.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+      throw new ApiError(400, `Invalid date format: ${date}. Expected YYYY-MM-DD.`);
+    }
+    normalizedDate = trimmedDate;
+    if (!resolvedDay) {
+      resolvedDay = getDayOfWeek(normalizedDate);
+    }
+  }
+
+  if (!resolvedDay) {
+    throw new ApiError(400, 'dayOfWeek is required when date is not provided');
+  }
+
+  if (!DAYS_OF_WEEK.includes(resolvedDay)) {
+    throw new ApiError(400, `Invalid day of week: ${resolvedDay}`);
   }
 
   const mess = await Mess.findById(messId);
@@ -226,13 +241,19 @@ export const createOrUpdateMenu = async (messId, data, user) => {
     throw new ApiError(404, 'Mess not found');
   }
 
-  let menu = await MessMenu.findOne({
-    messId,
-    dayOfWeek: normalizedDay,
-    mealType: normalizedMeal,
-  });
+  const findFilter = normalizedDate
+    ? { messId, date: normalizedDate, mealType: normalizedMeal }
+    : {
+        messId,
+        dayOfWeek: resolvedDay,
+        mealType: normalizedMeal,
+        $or: [{ date: null }, { date: { $exists: false } }],
+      };
+
+  let menu = await MessMenu.findOne(findFilter);
 
   if (menu) {
+    menu.dayOfWeek = resolvedDay;
     if (menuItems !== undefined) menu.menuItems = menuItems;
     if (notes !== undefined) menu.notes = notes;
     if (effectiveDate !== undefined) menu.effectiveDate = effectiveDate;
@@ -244,7 +265,8 @@ export const createOrUpdateMenu = async (messId, data, user) => {
     menu = await MessMenu.create({
       menuId,
       messId,
-      dayOfWeek: normalizedDay,
+      date: normalizedDate,
+      dayOfWeek: resolvedDay,
       mealType: normalizedMeal,
       menuItems: menuItems || [],
       notes: notes || '',
@@ -261,6 +283,13 @@ export const createOrUpdateMenu = async (messId, data, user) => {
 export const getMenus = async (messId, query = {}, user = null) => {
   const filter = { messId };
 
+  if (query.date) {
+    if (query.date === 'null') {
+      filter.$or = [{ date: null }, { date: { $exists: false } }];
+    } else {
+      filter.date = query.date.trim();
+    }
+  }
   if (query.dayOfWeek) {
     filter.dayOfWeek = query.dayOfWeek.trim().toUpperCase();
   }
@@ -277,52 +306,69 @@ export const getMenus = async (messId, query = {}, user = null) => {
 
   const menus = await MessMenu.find(filter)
     .populate('createdBy', 'name')
-    .sort({ dayOfWeek: 1, mealType: 1 })
+    .sort({ date: 1, dayOfWeek: 1, mealType: 1 })
     .lean();
 
   return menus;
 };
 
-export const getTodayMenu = async (messId, user = null) => {
+export const getTodayMenu = async (messId, user = null, dateParam = null) => {
   await ensureMessSeeded();
   const mess = await Mess.findById(messId).lean();
   if (!mess) {
     throw new ApiError(404, 'Mess not found');
   }
 
-  const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
-  const todayDayOfWeek = days[new Date().getDay()];
+  const targetDate = (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(String(dateParam).trim()))
+    ? String(dateParam).trim()
+    : getTodayDateString();
+  const targetDay = getDayOfWeek(targetDate);
 
-  const filter = {
+  const studentFilter = (user && user.role === ROLES.STUDENT) ? { isPublished: true } : {};
+
+  // 1. Look for date-specific scheduled menus for the exact date
+  const dateMenus = await MessMenu.find({
     messId,
-    dayOfWeek: todayDayOfWeek,
-  };
+    date: targetDate,
+    ...studentFilter,
+  }).lean();
 
-  // If student, require isPublished: true
-  if (user && user.role === ROLES.STUDENT) {
-    filter.isPublished = true;
-  }
-
-  const menus = await MessMenu.find(filter).lean();
+  // 2. Look for weekly recurring template menus for this day of week
+  const recurringMenus = await MessMenu.find({
+    messId,
+    dayOfWeek: targetDay,
+    $or: [{ date: null }, { date: { $exists: false } }],
+    ...studentFilter,
+  }).lean();
 
   const meals = {
-    dayOfWeek: todayDayOfWeek,
+    dayOfWeek: targetDay,
+    date: targetDate,
     BREAKFAST: null,
     LUNCH: null,
     SNACKS: null,
     DINNER: null,
   };
 
-  for (const m of menus) {
+  // Populate base with weekly recurring template
+  for (const m of recurringMenus) {
     if (meals[m.mealType] !== undefined) {
-      meals[m.mealType] = m;
+      meals[m.mealType] = { ...m, isScheduledOverride: false };
+    }
+  }
+
+  // Override with date-specific scheduled menu
+  for (const m of dateMenus) {
+    if (meals[m.mealType] !== undefined) {
+      meals[m.mealType] = { ...m, isScheduledOverride: true };
     }
   }
 
   return {
     mess,
-    today: new Date().toISOString().split('T')[0],
-    dayOfWeek: todayDayOfWeek,
+    today: getTodayDateString(),
+    date: targetDate,
+    dayOfWeek: targetDay,
     meals,
   };
 };
@@ -970,5 +1016,117 @@ export const getFoodQualityAnalytics = async (user, query = {}) => {
       openCount: i.openCount,
       latestOccurrence: i.latestOccurrence,
     })),
+  };
+};
+
+/**
+ * Upload and extract weekly menu timetable from photo or PDF for warden review
+ */
+export const extractWeeklyMenuDocument = async ({ file, messId, user }) => {
+  if (!file) {
+    throw new ApiError(400, 'Please select a menu photo or PDF document to upload.');
+  }
+
+  const mess = await Mess.findById(messId).lean();
+  if (!mess) {
+    throw new ApiError(404, 'Associated mess not found');
+  }
+
+  const result = await extractWeeklyMenuFromFile({
+    filePath: file.path,
+    originalName: file.originalname,
+    mimeType: file.mimetype,
+  });
+
+  return {
+    messId: mess._id,
+    messName: mess.name,
+    messCode: mess.code,
+    ...result,
+  };
+};
+
+/**
+ * Confirm and publish the extracted 7-day weekly timetable to MongoDB
+ */
+export const confirmAndPublishWeeklySchedule = async (messId, schedule, user) => {
+  const mess = await Mess.findById(messId);
+  if (!mess) {
+    throw new ApiError(404, 'Associated mess not found');
+  }
+
+  if (!schedule || typeof schedule !== 'object') {
+    throw new ApiError(400, 'Valid weekly schedule object is required');
+  }
+
+  const savedMenus = [];
+
+  for (const day of DAYS_OF_WEEK) {
+    const dayMeals = schedule[day];
+    if (!dayMeals) continue;
+
+    for (const meal of MEAL_TYPE_VALUES) {
+      const itemsRaw = dayMeals[meal];
+      if (!itemsRaw) continue;
+
+      let menuItems = [];
+      if (Array.isArray(itemsRaw)) {
+        menuItems = itemsRaw
+          .map((item) => {
+            if (typeof item === 'string') {
+              return { name: item.trim(), category: 'Main Course' };
+            }
+            if (item && item.name) {
+              return {
+                name: String(item.name).trim(),
+                category: item.category ? String(item.category).trim() : 'Main Course',
+              };
+            }
+            return null;
+          })
+          .filter((item) => item && item.name.length > 0);
+      }
+
+      // Upsert weekly recurring template (date: null)
+      const findFilter = {
+        messId,
+        dayOfWeek: day,
+        mealType: meal,
+        $or: [{ date: null }, { date: { $exists: false } }],
+      };
+
+      let existing = await MessMenu.findOne(findFilter);
+
+      if (existing) {
+        existing.menuItems = menuItems;
+        existing.isPublished = true;
+        existing.notes = `Confirmed weekly schedule for ${day}`;
+        existing.updatedBy = user._id;
+        await existing.save();
+        savedMenus.push(existing);
+      } else {
+        const menuId = await generateMenuId();
+        const created = await MessMenu.create({
+          menuId,
+          messId,
+          date: null,
+          dayOfWeek: day,
+          mealType: meal,
+          menuItems,
+          notes: `Confirmed weekly schedule for ${day}`,
+          isPublished: true,
+          createdBy: user._id,
+          updatedBy: user._id,
+        });
+        savedMenus.push(created);
+      }
+    }
+  }
+
+  return {
+    messId: mess._id,
+    messName: mess.name,
+    totalUpdated: savedMenus.length,
+    savedMenus,
   };
 };

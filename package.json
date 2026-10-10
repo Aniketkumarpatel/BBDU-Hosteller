@@ -1,0 +1,14 @@
+{
+  "name": "bbdu-hosteller-workspace",
+  "version": "1.0.0",
+  "description": "BBDU Hosteller - Fullstack Workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node dev.mjs",
+    "seed": "npm run seed --prefix backend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "test:backend": "npm run test --prefix backend"
+  }
+}

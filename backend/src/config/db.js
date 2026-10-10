@@ -77,7 +77,12 @@ export const connectDB = async (uri = env.MONGODB_URI) => {
 
   try {
     await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 15000,
+      heartbeatFrequencyMS: 10000,
+      maxPoolSize: 15,
+      minPoolSize: 2,
       autoIndex: !env.isProduction,
     });
     await initModels();
