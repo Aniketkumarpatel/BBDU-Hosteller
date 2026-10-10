@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as authService from '../services/auth.service.js';
+import { IS_PILOT_MODE } from '../config/pilot.js';
 
 const AuthContext = createContext(null);
 
@@ -15,7 +16,8 @@ export const getDashboardPathForRole = (role) => {
     case 'WARDEN':
       return '/warden/dashboard';
     case 'HOSTEL_STAFF':
-      return '/staff/dashboard';
+      // Pilot technicians land straight on their job list (DEC-026)
+      return IS_PILOT_MODE ? '/staff/jobs' : '/staff/dashboard';
     case 'STUDENT':
     default:
       return '/student/dashboard';

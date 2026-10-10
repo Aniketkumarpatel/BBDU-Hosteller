@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { IS_PILOT_MODE } from '../../config/pilot.js';
 import {
   getMyNotifications,
   getUnreadCount,
@@ -110,7 +111,7 @@ export default function NotificationBell() {
     const role = user?.role;
     if (role === 'STUDENT') return `/student/complaints/${complaintId}`;
     if (role === 'WARDEN') return `/warden/complaints/${complaintId}`;
-    if (role === 'HOSTEL_STAFF') return `/staff/complaints/${complaintId}`;
+    if (role === 'HOSTEL_STAFF') return IS_PILOT_MODE ? `/staff/jobs/${complaintId}` : `/staff/complaints/${complaintId}`;
     if (role === 'AUTHORITY') return `/authority/complaints/${complaintId}`;
     if (role === 'SUPER_ADMIN') return `/warden/complaints/${complaintId}`;
     return null;

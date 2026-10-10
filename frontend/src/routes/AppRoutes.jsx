@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import PublicLayout from '../layouts/PublicLayout.jsx';
 import DashboardLayout from '../layouts/DashboardLayout.jsx';
 import LandingPage from '../pages/LandingPage.jsx';
@@ -6,6 +6,10 @@ import LoginPage from '../pages/LoginPage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 import ChangePasswordPage from '../pages/ChangePasswordPage.jsx';
+import StaffJobsLayout from '../layouts/StaffJobsLayout.jsx';
+import StaffJobsPage from '../pages/staff/StaffJobsPage.jsx';
+import StaffJobPage from '../pages/staff/StaffJobPage.jsx';
+import { IS_PILOT_MODE } from '../config/pilot.js';
 import { ProtectedRoute, RoleProtectedRoute } from './Guards.jsx';
 
 // Role Dashboards
@@ -71,6 +75,12 @@ import ExpenseDetailPage from '../pages/finance/ExpenseDetailPage.jsx';
 import StudentServicesDashboardPage from '../pages/studentServices/StudentServicesDashboardPage.jsx';
 import ServiceRequestDetailPage from '../pages/studentServices/ServiceRequestDetailPage.jsx';
 
+// Old staff links and bookmarks keep working in pilot mode by forwarding to the new job screen
+function ForwardToJob() {
+  const { id } = useParams();
+  return <Navigate to={`/staff/jobs/${id}`} replace />;
+}
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -88,6 +98,14 @@ export default function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         {/* Any signed-in user; also the only page reachable while a password change is forced */}
         <Route path="/change-password" element={<ChangePasswordPage />} />
+
+        {/* Technician job screens (DEC-026): own simple layout, shown instead of the staff dashboard in pilot mode */}
+        <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'SUPER_ADMIN']} />}>
+          <Route element={<StaffJobsLayout />}>
+            <Route path="/staff/jobs" element={<StaffJobsPage />} />
+            <Route path="/staff/jobs/:id" element={<StaffJobPage />} />
+          </Route>
+        </Route>
 
         {/* Persistent Dashboard Layout for Non-Admin Routes */}
         <Route element={<DashboardLayout />}>
@@ -113,9 +131,19 @@ export default function AppRoutes() {
 
           {/* Staff Portal & Assigned Work Queue */}
           <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'SUPER_ADMIN']} />}>
-            <Route path="/staff/dashboard" element={<StaffDashboard />} />
-            <Route path="/staff/complaints" element={<StaffComplaintsPage />} />
-            <Route path="/staff/complaints/:id" element={<ComplaintManageDetailPage />} />
+            {IS_PILOT_MODE ? (
+              <>
+                <Route path="/staff/dashboard" element={<Navigate to="/staff/jobs" replace />} />
+                <Route path="/staff/complaints" element={<Navigate to="/staff/jobs" replace />} />
+                <Route path="/staff/complaints/:id" element={<ForwardToJob />} />
+              </>
+            ) : (
+              <>
+                <Route path="/staff/dashboard" element={<StaffDashboard />} />
+                <Route path="/staff/complaints" element={<StaffComplaintsPage />} />
+                <Route path="/staff/complaints/:id" element={<ComplaintManageDetailPage />} />
+              </>
+            )}
           </Route>
 
           {/* Authority Portal & Campus Complaints Oversight */}
