@@ -15,12 +15,14 @@ const backend = spawn(npmCmd, ['run', 'dev'], {
   cwd: path.join(__dirname, 'backend'),
   stdio: 'pipe',
   shell: isWin,
+  env: { ...process.env, DEV_MJS: 'true' },
 });
 
-const frontend = spawn(npmCmd, ['run', 'dev'], {
+const frontend = spawn(npmCmd, ['run', 'dev:ui'], {
   cwd: path.join(__dirname, 'frontend'),
   stdio: 'pipe',
   shell: isWin,
+  env: { ...process.env, DEV_MJS: 'true' },
 });
 
 const pipeOutput = (proc, prefix, colorCode) => {
@@ -46,10 +48,21 @@ const pipeOutput = (proc, prefix, colorCode) => {
 pipeOutput(backend, '[BACKEND]', '\x1b[34m');
 pipeOutput(frontend, '[FRONTEND]', '\x1b[32m');
 
+const killTree = (proc) => {
+  if (!proc || !proc.pid) return;
+  try {
+    if (isWin) {
+      spawn('taskkill', ['/pid', proc.pid.toString(), '/T', '/F'], { stdio: 'ignore' });
+    } else {
+      proc.kill('SIGTERM');
+    }
+  } catch {}
+};
+
 const cleanup = () => {
   console.log('\n\x1b[33mStopping all services...\x1b[0m');
-  try { backend.kill(); } catch {}
-  try { frontend.kill(); } catch {}
+  killTree(backend);
+  killTree(frontend);
   process.exit(0);
 };
 

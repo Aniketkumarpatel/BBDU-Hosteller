@@ -5,6 +5,9 @@ import { initModels } from '../models/index.js';
 
 // Fix querySrv ECONNREFUSED issues on Windows local networks resolving MongoDB Atlas SRV
 try {
+  if (dns.setDefaultResultOrder) {
+    dns.setDefaultResultOrder('ipv4first');
+  }
   dns.setServers(['8.8.8.8', '1.1.1.1']);
 } catch {
   // Fallback silently if custom DNS setting is restricted

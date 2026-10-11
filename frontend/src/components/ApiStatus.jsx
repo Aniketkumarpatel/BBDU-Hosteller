@@ -3,12 +3,14 @@ import { getHealth } from '../services/health.service.js';
 
 const styles = {
   checking: 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100',
+  connecting: 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100',
   online: 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100',
   offline: 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 cursor-pointer',
 };
 
 const labels = {
-  checking: 'Checking API…',
+  checking: 'Connecting to API…',
+  connecting: 'Connecting to Database…',
   online: 'API & Database Online',
   offline: 'API Offline (Click to Retry)',
 };
@@ -23,8 +25,13 @@ export default function ApiStatus() {
     try {
       const data = await getHealth();
       if (data?.success) {
-        setStatus('online');
-        setDbName(data?.database?.name || 'connected');
+        if (data?.database?.connected) {
+          setStatus('online');
+          setDbName(data?.database?.name || 'connected');
+        } else {
+          setStatus('connecting');
+          setDbName('DB Connecting…');
+        }
       } else {
         setStatus('offline');
       }
@@ -43,8 +50,8 @@ export default function ApiStatus() {
   useEffect(() => {
     checkStatus();
 
-    // Smart polling: check every 10s if online, every 4s if offline/reconnecting
-    const intervalTime = status === 'online' ? 12000 : 4000;
+    // Fast polling when offline/connecting (2.5s), relaxed polling when online (12s)
+    const intervalTime = status === 'online' ? 12000 : 2500;
     const timer = setInterval(() => {
       checkStatus();
     }, intervalTime);
@@ -63,14 +70,14 @@ export default function ApiStatus() {
         {status === 'online' && (
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
         )}
-        {status === 'checking' && (
+        {(status === 'checking' || status === 'connecting') && (
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
         )}
         <span
           className={`relative inline-flex h-2 w-2 rounded-full ${
             status === 'online'
               ? 'bg-emerald-500'
-              : status === 'checking'
+              : status === 'checking' || status === 'connecting'
                 ? 'bg-amber-500'
                 : 'bg-rose-500'
           }`}
