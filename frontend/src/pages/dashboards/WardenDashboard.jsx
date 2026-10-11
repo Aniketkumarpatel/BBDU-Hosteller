@@ -145,15 +145,15 @@ export default function WardenDashboard() {
                       </svg>
                       Maintenance
                     </Link>
-                    <Link
-                      to="/mess"
-                      className="rounded-lg bg-amber-600 hover:bg-amber-700 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
-                    >
-                      <span>🍽</span>
-                      Mess &amp; Dining
-                    </Link>
                   </>
                 )}
+                <Link
+                  to="/mess"
+                  className="rounded-lg bg-amber-600 hover:bg-amber-700 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
+                >
+                  <span>🍽</span>
+                  Mess &amp; Dining
+                </Link>
                 <span className="rounded-lg bg-white/10 px-3 py-1.5 font-mono text-xs font-medium text-white">
                   Emp ID: {user?.employeeId || 'WRD-STAFF'}
                 </span>

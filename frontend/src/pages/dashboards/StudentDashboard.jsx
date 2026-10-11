@@ -613,6 +613,13 @@ export default function StudentDashboard() {
                     </svg>
                     <span className="mt-1 text-[11px] font-semibold">My issues</span>
                   </Link>
+                  <Link
+                    to="/mess"
+                    className="flex flex-col items-center justify-center rounded-lg border border-amber-200 bg-amber-50/80 p-2.5 text-center text-amber-900 transition-all duration-200 hover:bg-amber-100 hover:shadow-2xs"
+                  >
+                    <span className="text-base">🍽</span>
+                    <span className="mt-0.5 text-[11px] font-semibold">Mess &amp; Dining</span>
+                  </Link>
 
                   {!IS_PILOT_MODE && (
                     <>
@@ -624,14 +631,6 @@ export default function StudentDashboard() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         <span className="mt-1 text-[11px] font-semibold">Outpass &amp; Pass</span>
-                      </Link>
-
-                      <Link
-                        to="/mess"
-                        className="flex flex-col items-center justify-center rounded-lg border border-amber-200 bg-amber-50/80 p-2.5 text-center text-amber-900 transition-all duration-200 hover:bg-amber-100 hover:shadow-2xs"
-                      >
-                        <span className="text-base">🍽</span>
-                        <span className="mt-0.5 text-[11px] font-semibold">Mess &amp; Dining</span>
                       </Link>
 
                       <Link
@@ -661,6 +660,79 @@ export default function StudentDashboard() {
               <div className="mt-4 border-t border-indigo-100 pt-3 text-[11px] text-slate-400 text-center">
                 Official BBDU Hostel Portal
               </div>
+            </div>
+          </div>
+
+          {/* Today's Mess Menu & Dining Schedule (Requirement 8) */}
+          <div className="rounded-xl border border-amber-200/90 bg-gradient-to-b from-amber-50/50 via-white to-white p-5 shadow-2xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-100 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <span className="text-base">🍽</span> Today's Mess Menu &amp; Dining Schedule — {todayMenuData?.date ? `${todayMenuData.date} (${todayMenuData.dayOfWeek})` : 'Live Schedule'}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Published daily meal schedule for residents. Rate today's food quality or submit feedback.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/mess"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:bg-amber-700 transition"
+                >
+                  <span>📋</span> View Weekly Menu &amp; Review Food &rarr;
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              {['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'].map((meal) => {
+                const mealData = todayMenuData?.meals?.[meal];
+                const timings = {
+                  BREAKFAST: '07:30 AM – 09:30 AM',
+                  LUNCH: '12:30 PM – 02:30 PM',
+                  SNACKS: '04:30 PM – 06:00 PM',
+                  DINNER: '07:30 PM – 09:30 PM',
+                }[meal];
+
+                return (
+                  <div
+                    key={meal}
+                    className="flex flex-col justify-between rounded-xl border border-amber-100/80 bg-white p-3.5 shadow-2xs hover:border-amber-300 transition"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                            {meal.charAt(0) + meal.slice(1).toLowerCase()}
+                          </h4>
+                          <span className="text-[10px] text-slate-400">{timings}</span>
+                        </div>
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[9px] font-bold ${
+                            mealData?.isPublished
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {mealData?.isPublished ? 'Published' : 'Scheduled'}
+                        </span>
+                      </div>
+
+                      <div className="mt-2.5 space-y-1 min-h-[45px]">
+                        {mealData?.menuItems && mealData.menuItems.length > 0 ? (
+                          mealData.menuItems.slice(0, 3).map((it, i) => (
+                            <p key={i} className="text-xs font-semibold text-slate-700 truncate">
+                              • {it.name}
+                            </p>
+                          ))
+                        ) : (
+                          <p className="text-xs text-slate-400 italic pt-1.5">Standard hostel menu</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

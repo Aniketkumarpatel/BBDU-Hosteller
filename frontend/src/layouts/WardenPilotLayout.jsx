@@ -3,6 +3,7 @@ import PilotShell from './PilotShell.jsx';
 const TABS = [
   { to: '/warden/problems', labelKey: 'nav.problems' },
   { to: '/warden/people', labelKey: 'nav.people' },
+  { to: '/mess', labelKey: 'nav.mess' },
 ];
 
 /** Warden shell (DEC-029): two destinations, Problems and People, as simple tabs. */

@@ -5,6 +5,7 @@ import { useLanguage } from '../../i18n/LanguageContext.jsx';
 const TABS = [
   { to: '/student/home', icon: 'home', labelKey: 'tab.home' },
   { to: '/student/problems', icon: 'list', labelKey: 'nav.problems' },
+  { to: '/mess', icon: 'utensils', labelKey: 'tab.mess' },
   { to: '/student/alerts', icon: 'bell', labelKey: 'tab.alerts', badge: true },
   { to: '/student/me', icon: 'user', labelKey: 'tab.me' },
 ];

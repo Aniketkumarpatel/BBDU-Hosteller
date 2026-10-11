@@ -114,20 +114,20 @@ export default function DashboardLayout({ title, roleLabel, children }) {
                 >
                   + Report an issue
                 </NavLink>
+                <NavLink
+                  to="/mess"
+                  className={({ isActive }) =>
+                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                    }`
+                  }
+                >
+                  Mess &amp; Dining
+                </NavLink>
                 {!IS_PILOT_MODE && (
                   <>
-                    <NavLink
-                      to="/mess"
-                      className={({ isActive }) =>
-                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                          isActive
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                        }`
-                      }
-                    >
-                      Mess &amp; Dining
-                    </NavLink>
                     <NavLink
                       to="/outpass"
                       className={({ isActive }) =>
@@ -210,6 +210,18 @@ export default function DashboardLayout({ title, roleLabel, children }) {
                     Residents &amp; Staff
                   </NavLink>
                 )}
+                <NavLink
+                  to="/mess"
+                  className={({ isActive }) =>
+                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                    }`
+                  }
+                >
+                  Mess &amp; Dining
+                </NavLink>
                 {!IS_PILOT_MODE && (
                   <>
                     <NavLink
@@ -247,18 +259,6 @@ export default function DashboardLayout({ title, roleLabel, children }) {
                       }
                     >
                       Preventive Maintenance
-                    </NavLink>
-                    <NavLink
-                      to="/mess"
-                      className={({ isActive }) =>
-                        `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                          isActive
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
-                        }`
-                      }
-                    >
-                      Mess &amp; Dining
                     </NavLink>
                     <NavLink
                       to="/cleaning"

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import complaintService from '../../services/complaintService.js';
+import messService from '../../services/messService.js';
 import TrackerCard from '../../components/student/TrackerCard.jsx';
 import Icon from '../../components/jobs/icons.jsx';
 import CategoryArt from '../../components/student/CategoryArt.jsx';
@@ -20,6 +21,7 @@ export default function StudentHomePage() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [problems, setProblems] = useState([]);
+  const [todayMenu, setTodayMenu] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorKey, setErrorKey] = useState('');
 
@@ -44,6 +46,23 @@ export default function StudentHomePage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    messService.getMesses()
+      .then(async (res) => {
+        if (!active || !res?.success || !res?.data?.length) return;
+        const target = res.data[0];
+        const menuRes = await messService.getTodayMenu(target._id);
+        if (active && menuRes?.success) {
+          setTodayMenu(menuRes.data);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => document.visibilityState === 'visible' && load({ quiet: true }), REFRESH_MS);
@@ -84,6 +103,65 @@ export default function StudentHomePage() {
               <span className="text-xs font-semibold leading-tight text-slate-800">{t(`category.${key}`)}</span>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* Today's Mess Menu Quick Preview */}
+      <section aria-labelledby="mess-menu-title" className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-xs text-lg">
+              🍽
+            </span>
+            <div>
+              <h2 id="mess-menu-title" className="text-lg font-bold leading-tight text-slate-900">
+                {t('student.mess.title')}
+              </h2>
+              <p className="text-xs font-medium text-slate-500">
+                {todayMenu?.dayOfWeek ? `${todayMenu.dayOfWeek} • Live Dining Schedule` : 'Daily Dining Schedule'}
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/mess"
+            className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-800 transition"
+          >
+            <span>{t('student.seeAll')}</span>
+            <Icon name="chevronRight" className="h-4 w-4" strokeWidth={2.5} />
+          </Link>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          {['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'].map((meal) => {
+            const mealData = todayMenu?.meals?.[meal];
+            const items = mealData?.menuItems?.slice(0, 2).map((it) => it.name).join(', ');
+            return (
+              <div
+                key={meal}
+                className="rounded-2xl border border-amber-100 bg-white/90 p-3 shadow-2xs transition hover:border-amber-300"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                    {meal.charAt(0) + meal.slice(1).toLowerCase()}
+                  </span>
+                  <span className={`h-1.5 w-1.5 rounded-full ${mealData?.isPublished ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                </div>
+                <p className="mt-1 text-xs font-semibold text-slate-700 line-clamp-2">
+                  {items || (mealData?.isPublished ? 'Special Menu' : 'Scheduled')}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-3.5 flex justify-end">
+          <Link
+            to="/mess"
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-amber-600 px-4 text-xs font-bold text-white shadow-2xs transition active:scale-95 hover:bg-amber-700"
+          >
+            <span>{t('student.mess.view')}</span>
+            <Icon name="chevronRight" className="h-4 w-4" strokeWidth={2.5} />
+          </Link>
         </div>
       </section>
 

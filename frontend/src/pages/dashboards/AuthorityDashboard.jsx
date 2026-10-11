@@ -85,6 +85,13 @@ export default function AuthorityDashboard() {
                   </svg>
                   Operational Intelligence
                 </Link>
+                <Link
+                  to="/mess"
+                  className="rounded-lg bg-amber-600 hover:bg-amber-700 px-3.5 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
+                >
+                  <span>🍽</span>
+                  Mess Operations
+                </Link>
                 <span className="rounded-lg bg-white/10 px-3.5 py-1.5 text-xs font-bold text-white uppercase tracking-wider">
                   Campus Occupancy: {occupancyRate}%
                 </span>
