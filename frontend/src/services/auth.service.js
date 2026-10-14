@@ -20,6 +20,16 @@ export const getPublicRooms = async (floorId) => {
   return data;
 };
 
+export const sendRegistrationOtp = async ({ email, role, name }) => {
+  const { data } = await api.post('/auth/send-otp', { email, role, name });
+  return data;
+};
+
+export const verifyRegistrationOtp = async ({ email, otp }) => {
+  const { data } = await api.post('/auth/verify-otp', { email, otp });
+  return data;
+};
+
 export const register = async (userData) => {
   const { data } = await api.post('/auth/register', userData);
   return data;

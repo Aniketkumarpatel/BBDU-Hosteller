@@ -181,8 +181,8 @@ test('3. Invalid email format is rejected (400 Bad Request)', async () => {
   assert.equal(body.success, false);
 });
 
-test('3b. Non-BBDU domain email is rejected with explicit error message (400 Bad Request)', async () => {
-  const invalidEmails = ['test@gmail.com', 'student@yahoo.com', 'abc@outlook.com', 'abc@bbdu.com'];
+test('3b. Invalid or malformed emails are rejected with explicit error message (400 Bad Request)', async () => {
+  const invalidEmails = ['student-no-at', 'abc@', '@domain.com', 'user @domain.com'];
 
   for (const email of invalidEmails) {
     const res = await fetch(`${baseUrl}/api/auth/register`, {
@@ -202,7 +202,6 @@ test('3b. Non-BBDU domain email is rejected with explicit error message (400 Bad
     assert.equal(res.status, 400, `Email ${email} should be rejected`);
     const body = await res.json();
     assert.equal(body.success, false);
-    assert.match(body.message, /Please use your official BBDU email address ending with @bbdu\.ac\.in/i);
   }
 });
 
@@ -248,8 +247,8 @@ test('4. Weak password rejected (400 Bad Request)', async () => {
   assert.equal(body.success, false);
 });
 
-test('5. Public registration rejects privilege escalation (SUPER_ADMIN, WARDEN, AUTHORITY)', async () => {
-  const forbiddenRoles = ['SUPER_ADMIN', 'WARDEN', 'AUTHORITY'];
+test('5. Public registration rejects privilege escalation (SUPER_ADMIN, AUTHORITY)', async () => {
+  const forbiddenRoles = ['SUPER_ADMIN', 'AUTHORITY'];
 
   for (const role of forbiddenRoles) {
     const res = await fetch(`${baseUrl}/api/auth/register`, {
@@ -268,6 +267,70 @@ test('5. Public registration rejects privilege escalation (SUPER_ADMIN, WARDEN, 
     assert.equal(body.success, false);
     assert.match(body.message, /STUDENT/);
   }
+});
+
+test('5b. Registration Email OTP flow: send-otp, verify-otp, and warden registration', async () => {
+  // 1. Send OTP to university email
+  const sendRes = await fetch(`${baseUrl}/api/auth/send-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'newwarden@bbdu.ac.in',
+      role: 'WARDEN',
+      name: 'Hostel Warden Test',
+    }),
+  });
+
+  assert.equal(sendRes.status, 200);
+  const sendBody = await sendRes.json();
+  assert.equal(sendBody.success, true);
+  assert.ok(sendBody.data.previewOtp, 'Preview OTP returned for verification');
+  const otp = sendBody.data.previewOtp;
+
+  // 2. Reject wrong OTP
+  const badVerifyRes = await fetch(`${baseUrl}/api/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'newwarden@bbdu.ac.in',
+      otp: '000000',
+    }),
+  });
+  assert.equal(badVerifyRes.status, 400);
+
+  // 3. Verify correct OTP
+  const goodVerifyRes = await fetch(`${baseUrl}/api/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'newwarden@bbdu.ac.in',
+      otp,
+    }),
+  });
+  assert.equal(goodVerifyRes.status, 200);
+  const goodVerifyBody = await goodVerifyRes.json();
+  assert.equal(goodVerifyBody.success, true);
+
+  // 4. Register WARDEN successfully
+  const wardenRegRes = await fetch(`${baseUrl}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'Hostel Warden Test',
+      email: 'newwarden@bbdu.ac.in',
+      password: 'Password@123',
+      role: 'WARDEN',
+      hostelId: String(testHostel._id),
+      employeeId: 'EMP-WARDEN-99',
+      otp,
+    }),
+  });
+  assert.equal(wardenRegRes.status, 201);
+  const wardenRegBody = await wardenRegRes.json();
+  assert.equal(wardenRegBody.success, true);
+  assert.equal(wardenRegBody.data.user.role, 'WARDEN');
+  assert.equal(wardenRegBody.data.user.email, 'newwarden@bbdu.ac.in');
+  assert.equal(wardenRegBody.data.user.isEmailVerified, true);
 });
 
 test('6. Login with correct credentials returns safe user and valid JWT', async () => {

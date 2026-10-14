@@ -35,9 +35,11 @@ import ServiceRequest from './ServiceRequest.js';
 import HostelContact from './HostelContact.js';
 import StudentFeedback from './StudentFeedback.js';
 import SecurityAuditLog from './SecurityAuditLog.js';
+import Otp from './Otp.js';
 
 export {
   User,
+  Otp,
   Hostel,
   Block,
   Floor,
@@ -116,6 +118,7 @@ export const allModels = {
   HostelContact,
   StudentFeedback,
   SecurityAuditLog,
+  Otp,
 };
 
 /**
@@ -125,6 +128,11 @@ export const allModels = {
 export const initModels = async () => {
   try {
     await MessMenu.collection.dropIndex('messId_1_dayOfWeek_1_mealType_1');
+  } catch {
+    // Ignore if legacy index does not exist
+  }
+  try {
+    await Otp.collection.dropIndex('createdAt_1');
   } catch {
     // Ignore if legacy index does not exist
   }

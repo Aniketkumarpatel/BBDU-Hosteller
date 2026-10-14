@@ -31,6 +31,7 @@ export const sanitizeUser = (user) => {
     roomNumber: raw.roomNumber || (raw.roomId && typeof raw.roomId === 'object' ? raw.roomId.roomNumber : undefined),
     departmentId: raw.departmentId || undefined,
     isActive: Boolean(raw.isActive),
+    isEmailVerified: Boolean(raw.isEmailVerified),
     mustChangePassword: Boolean(raw.mustChangePassword),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,

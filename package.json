@@ -7,8 +7,11 @@
   "scripts": {
     "dev": "node dev.mjs",
     "seed": "npm run seed --prefix backend",
-    "dev:backend": "npm run dev --prefix backend",
+    "dev:backend": "npm run dev --prefix backend",   
     "dev:frontend": "npm run dev:ui --prefix frontend",
     "test:backend": "npm run test --prefix backend"
   }
 }
+
+
+

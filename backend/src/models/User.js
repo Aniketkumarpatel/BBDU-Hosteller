@@ -45,6 +45,7 @@ const userSchema = new mongoose.Schema(
     roomNumber: { type: String, trim: true },
     departmentId: objectId('Department'),
     isActive: { type: Boolean, default: true },
+    isEmailVerified: { type: Boolean, default: false },
     // Password lifecycle (DEC-022). Set when an admin or warden provisions or resets a
     // password: the user can then only change it, every other API call is rejected.
     mustChangePassword: { type: Boolean, default: false },

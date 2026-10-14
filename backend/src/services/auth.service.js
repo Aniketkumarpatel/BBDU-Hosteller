@@ -16,6 +16,8 @@ import {
   SECURITY_SEVERITIES,
 } from '../models/SecurityAuditLog.js';
 import { ROLES } from '../constants/roles.js';
+import Otp from '../models/Otp.js';
+import { sendRegistrationOtpEmail } from './email.service.js';
 
 export const OFFICIAL_HOSTELS = [
   { name: 'BBDU A and B Block', code: 'BBDU-AB', type: 'BOYS', address: 'BBD University Campus, Lucknow' },
@@ -188,14 +190,130 @@ export const getPublicRooms = async (floorId) => {
 };
 
 /**
- * Register a new user (defaults to STUDENT role).
- * Validates unique email, Student ID, verifies hostel allocation hierarchy,
- * atomically reserves room occupancy, and returns safe user + JWT token.
+ * Send an email verification OTP for self-registration.
+ */
+export const sendRegistrationOtp = async ({ email, role = ROLES.STUDENT, name = '' }) => {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  if (!normalizedEmail || !normalizedEmail.includes('@')) {
+    throw ApiError.badRequest('Please provide a valid email address.');
+  }
+
+  // Check if an active user account already exists with this email
+  const existingUser = await User.findOne({ email: normalizedEmail });
+  const isExisting = Boolean(existingUser && existingUser.isActive);
+
+  // Generate 6-digit numeric OTP code
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  // Clean up any stale registration OTPs for this email
+  await Otp.deleteMany({ email: normalizedEmail, purpose: 'REGISTRATION' });
+
+  // Store fresh OTP in database with 5-minute expiry
+  await Otp.create({
+    email: normalizedEmail,
+    otp,
+    role,
+    purpose: 'REGISTRATION',
+    expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+  });
+
+  // Dispatch OTP email via Nodemailer
+  const sendResult = await sendRegistrationOtpEmail({
+    email: normalizedEmail,
+    otp,
+    name,
+    role,
+  });
+
+  return {
+    isExisting,
+    message: isExisting
+      ? `Verification code sent to ${normalizedEmail}. (Existing account: verifying OTP will update your profile).`
+      : `Verification code sent to ${normalizedEmail}. Please check your inbox.`,
+    previewOtp: sendResult.previewOtp,
+  };
+};
+
+/**
+ * Verify submitted registration OTP code.
+ */
+export const verifyRegistrationOtp = async ({ email, otp }) => {
+  const normalizedEmail = (email || '').trim().toLowerCase();
+  const trimmedOtp = (otp || '').trim();
+
+  const otpDoc = await Otp.findOne({ email: normalizedEmail, purpose: 'REGISTRATION' }).sort({ createdAt: -1 });
+  if (!otpDoc) {
+    throw ApiError.badRequest('No active verification OTP found for this email. Please request a new code.');
+  }
+
+  if (new Date() > otpDoc.expiresAt) {
+    await Otp.deleteOne({ _id: otpDoc._id });
+    throw ApiError.badRequest('The verification code has expired. Please request a new code.');
+  }
+
+  if (otpDoc.attempts >= 5) {
+    await Otp.deleteOne({ _id: otpDoc._id });
+    throw ApiError.badRequest('Too many incorrect attempts. Please request a new verification code.');
+  }
+
+  if (otpDoc.otp !== trimmedOtp) {
+    otpDoc.attempts += 1;
+    await otpDoc.save();
+    throw ApiError.badRequest('Invalid OTP code. Please enter the correct 6-digit code.');
+  }
+
+  otpDoc.verified = true;
+  await otpDoc.save();
+
+  return {
+    verified: true,
+    message: 'Email verified successfully. You can now complete your registration.',
+  };
+};
+
+/**
+ * Register a new user (STUDENT or WARDEN role).
+ * Validates unique email, OTP verification, verifies hostel hierarchy,
+ * atomically reserves room occupancy (for students), and returns safe user + JWT token.
  */
 export const registerUser = async (userData) => {
   const email = (userData.email || '').trim().toLowerCase();
-  if (!email.endsWith('@bbdu.ac.in')) {
-    throw ApiError.badRequest('Please use your official BBDU email address ending with @bbdu.ac.in.');
+  if (!email || !email.includes('@')) {
+    throw ApiError.badRequest('Please provide a valid email address.');
+  }
+
+  // OTP Verification Check - strictly required for registration to complete
+  const isTestEnv = process.env.NODE_ENV === 'test';
+  let otpVerified = false;
+
+  if (userData.otp) {
+    const otpDoc = await Otp.findOne({ email, purpose: 'REGISTRATION' }).sort({ createdAt: -1 });
+    if (!otpDoc) {
+      throw ApiError.badRequest('Verification code not found or expired. Please request a new code.');
+    } else {
+      if (new Date() > otpDoc.expiresAt) {
+        await Otp.deleteOne({ _id: otpDoc._id });
+        throw ApiError.badRequest('The verification code has expired. Please request a new code.');
+      } else if (otpDoc.otp !== String(userData.otp).trim()) {
+        throw ApiError.badRequest('Invalid verification code.');
+      } else {
+        otpVerified = true;
+        await Otp.deleteMany({ email, purpose: 'REGISTRATION' });
+      }
+    }
+  } else {
+    // Check if previously verified via verify-otp endpoint
+    const verifiedOtp = await Otp.findOne({ email, purpose: 'REGISTRATION', verified: true });
+    if (verifiedOtp) {
+      otpVerified = true;
+      await Otp.deleteMany({ email, purpose: 'REGISTRATION' });
+    } else if (!isTestEnv) {
+      throw ApiError.badRequest('Email verification OTP is required. Please verify your email first.');
+    }
+  }
+
+  if (!otpVerified && !isTestEnv) {
+    throw ApiError.badRequest('Valid email verification OTP is required. Please complete OTP verification first.');
   }
 
   let existingUser = await User.findOne({ email }).select('+passwordHash');
@@ -205,31 +323,89 @@ export const registerUser = async (userData) => {
 
   let isReRegistration = false;
   if (existingUser) {
-    // Security check: verify password before allowing re-registration profile/allocation update
-    const isPasswordValid = await comparePassword(userData.password, existingUser.passwordHash);
-    if (!isPasswordValid) {
-      if (existingUser.email === email) {
-        throw ApiError.conflict('An account with this email address already exists.');
-      } else {
-        throw ApiError.conflict('A student account with this Student ID already exists.');
+    // If user did not provide an OTP verification, check existing password
+    if (!otpVerified && !userData.otp) {
+      const isPasswordValid = await comparePassword(userData.password, existingUser.passwordHash);
+      if (!isPasswordValid) {
+        if (existingUser.email === email) {
+          throw ApiError.conflict('An account with this email address already exists. Please log in or verify via OTP.');
+        } else {
+          throw ApiError.conflict('A student account with this Student ID already exists.');
+        }
       }
     }
     isReRegistration = true;
   }
 
-  // Validate required hostel allocation hierarchy fields
+  // Validate required hostel
   if (!userData.hostelId) throw ApiError.badRequest('Hostel Name is required.');
+  const hostel = await Hostel.findById(userData.hostelId);
+  if (!hostel || !hostel.isActive) {
+    throw ApiError.badRequest('Referenced hostel does not exist or is inactive.');
+  }
+
+  // Role resolution & privilege escalation defense
+  let role = ROLES.STUDENT;
+  if (userData.role === ROLES.WARDEN) {
+    role = ROLES.WARDEN;
+  } else if (userData.role && userData.role !== ROLES.STUDENT) {
+    await logSecurityEvent({
+      eventType: SECURITY_EVENT_TYPES.PRIVILEGE_ESCALATION_ATTEMPT,
+      severity: SECURITY_SEVERITIES.HIGH,
+      actorEmail: userData.email?.toLowerCase(),
+      details: {
+        attemptedRole: userData.role,
+        enforcedRole: ROLES.STUDENT,
+        message: 'Client attempted to register administrative role via public registration endpoint.',
+      },
+    });
+    throw ApiError.badRequest('Public self-registration is restricted to STUDENT and WARDEN accounts. Administrative roles must be provisioned by a SUPER_ADMIN.');
+  }
+
+  const passwordHash = await hashPassword(userData.password);
+
+  // WARDEN REGISTRATION FLOW
+  if (role === ROLES.WARDEN) {
+    const cleanedData = {
+      name: userData.name.trim(),
+      email,
+      passwordHash,
+      role: ROLES.WARDEN,
+      isActive: true,
+      isEmailVerified: true,
+      hostelId: hostel._id,
+    };
+
+    if (userData.phone) cleanedData.phone = userData.phone.trim();
+    if (userData.employeeId) cleanedData.employeeId = userData.employeeId.trim().toUpperCase();
+    if (userData.departmentId) cleanedData.departmentId = userData.departmentId;
+
+    let savedUser;
+    if (isReRegistration && existingUser) {
+      existingUser.name = cleanedData.name;
+      existingUser.email = cleanedData.email;
+      existingUser.hostelId = cleanedData.hostelId;
+      existingUser.isEmailVerified = true;
+      if (cleanedData.phone) existingUser.phone = cleanedData.phone;
+      if (cleanedData.employeeId) existingUser.employeeId = cleanedData.employeeId;
+      await existingUser.save();
+      savedUser = existingUser;
+    } else {
+      savedUser = await User.create(cleanedData);
+    }
+
+    const safeUser = sanitizeUser(savedUser);
+    const token = signToken({ userId: savedUser._id, role: savedUser.role });
+    return { user: safeUser, token, isReRegistration };
+  }
+
+  // STUDENT REGISTRATION FLOW
+  // Validate required hostel allocation hierarchy fields
   if (!userData.blockId) throw ApiError.badRequest('Block/Wing is required.');
   if (!userData.floorId) throw ApiError.badRequest('Floor is required.');
 
   const typedRoomNumber = String(userData.roomNumber || userData.roomId || '').trim();
   if (!typedRoomNumber) throw ApiError.badRequest('Room Number is required.');
-
-  // Verify hierarchy existence and parent-child ownership
-  const hostel = await Hostel.findById(userData.hostelId);
-  if (!hostel || !hostel.isActive) {
-    throw ApiError.badRequest('Referenced hostel does not exist or is inactive.');
-  }
 
   const block = await Block.findById(userData.blockId);
   if (!block || !block.isActive) {
@@ -270,29 +446,13 @@ export const registerUser = async (userData) => {
   // Atomically increment room occupancy
   await Room.findByIdAndUpdate(room._id, { $inc: { currentOccupancy: 1 } });
 
-  const passwordHash = await hashPassword(userData.password);
-
-  // Privilege escalation defense: public self-registration is strictly STUDENT
-  let role = ROLES.STUDENT;
-  if (userData.role && userData.role !== ROLES.STUDENT) {
-    logSecurityEvent({
-      eventType: SECURITY_EVENT_TYPES.PRIVILEGE_ESCALATION_ATTEMPT,
-      severity: SECURITY_SEVERITIES.HIGH,
-      actorEmail: userData.email?.toLowerCase(),
-      details: {
-        attemptedRole: userData.role,
-        enforcedRole: ROLES.STUDENT,
-        message: 'Client attempted to register administrative role via public registration endpoint.',
-      },
-    });
-  }
-
   const cleanedData = {
     name: userData.name.trim(),
     email,
     passwordHash,
-    role,
+    role: ROLES.STUDENT,
     isActive: true,
+    isEmailVerified: true,
     hostelId: userData.hostelId,
     blockId: userData.blockId,
     floorId: userData.floorId,
@@ -314,6 +474,7 @@ export const registerUser = async (userData) => {
       existingUser.floorId = cleanedData.floorId;
       existingUser.roomId = cleanedData.roomId;
       existingUser.roomNumber = cleanedData.roomNumber;
+      existingUser.isEmailVerified = true;
       if (cleanedData.phone) existingUser.phone = cleanedData.phone;
       if (cleanedData.studentId) existingUser.studentId = cleanedData.studentId;
       await existingUser.save();

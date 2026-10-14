@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
+import { useAuth, getDashboardPathForRole } from '../context/AuthContext.jsx';
 import {
   getPublicHostels,
   getPublicBlocks,
   getPublicFloors,
-  getPublicRooms,
+  sendRegistrationOtp,
 } from '../services/auth.service.js';
 
 export default function RegisterPage() {
+  const [role, setRole] = useState('STUDENT'); // 'STUDENT' | 'WARDEN'
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     studentId: '',
+    employeeId: '',
     phone: '',
     password: '',
     confirmPassword: '',
@@ -32,10 +35,21 @@ export default function RegisterPage() {
   const [loadingBlocks, setLoadingBlocks] = useState(false);
   const [loadingFloors, setLoadingFloors] = useState(false);
 
+  // Form states
   const [formErrors, setFormErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // OTP Modal states
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [isExistingAccount, setIsExistingAccount] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [screenOtp, setScreenOtp] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -68,10 +82,10 @@ export default function RegisterPage() {
     };
   }, []);
 
-  // Fetch blocks when hostelId changes
+  // Fetch blocks when hostelId changes (Only for Student)
   useEffect(() => {
     let isMounted = true;
-    if (!formData.hostelId) {
+    if (!formData.hostelId || role === 'WARDEN') {
       setBlocks([]);
       setFloors([]);
       return;
@@ -101,12 +115,12 @@ export default function RegisterPage() {
     return () => {
       isMounted = false;
     };
-  }, [formData.hostelId]);
+  }, [formData.hostelId, role]);
 
-  // Fetch floors when blockId changes
+  // Fetch floors when blockId changes (Only for Student)
   useEffect(() => {
     let isMounted = true;
-    if (!formData.blockId) {
+    if (!formData.blockId || role === 'WARDEN') {
       setFloors([]);
       return;
     }
@@ -135,11 +149,19 @@ export default function RegisterPage() {
     return () => {
       isMounted = false;
     };
-  }, [formData.blockId]);
+  }, [formData.blockId, role]);
+
+  // Resend OTP Cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setFormErrors((prev) => ({ ...prev, [name]: '' }));
     setSubmitError('');
 
@@ -172,7 +194,28 @@ export default function RegisterPage() {
     }
   };
 
-  const validate = () => {
+  const handleRoleChange = (newRole) => {
+    setRole(newRole);
+    setFormErrors({});
+    setSubmitError('');
+    // Clear student-specific fields if switching to warden
+    if (newRole === 'WARDEN') {
+      setFormData((prev) => ({
+        ...prev,
+        studentId: '',
+        blockId: '',
+        floorId: '',
+        roomNumber: '',
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        employeeId: '',
+      }));
+    }
+  };
+
+  const validateForm = () => {
     const errors = {};
 
     if (!formData.name.trim()) {
@@ -180,14 +223,21 @@ export default function RegisterPage() {
     }
 
     const trimmedEmail = formData.email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!trimmedEmail) {
-      errors.email = 'University email is required.';
-    } else if (!trimmedEmail.endsWith('@bbdu.ac.in')) {
-      errors.email = 'Please use your official BBDU email address ending with @bbdu.ac.in.';
+      errors.email = 'Email address is required.';
+    } else if (!emailRegex.test(trimmedEmail)) {
+      errors.email = 'Please enter a valid email address.';
     }
 
-    if (!formData.studentId.trim()) {
-      errors.studentId = 'Student ID is required.';
+    if (role === 'STUDENT') {
+      if (!formData.studentId.trim()) {
+        errors.studentId = 'Student ID is required.';
+      }
+    } else if (role === 'WARDEN') {
+      if (!formData.employeeId.trim()) {
+        errors.employeeId = 'Employee ID is required.';
+      }
     }
 
     if (!formData.password) {
@@ -211,65 +261,144 @@ export default function RegisterPage() {
     if (!formData.hostelId) {
       errors.hostelId = 'Hostel Name is required.';
     }
-    if (!formData.blockId) {
-      errors.blockId = 'Block/Wing is required.';
-    }
-    if (!formData.floorId) {
-      errors.floorId = 'Floor is required.';
-    }
-    if (!formData.roomNumber.trim()) {
-      errors.roomNumber = 'Room Number is required.';
+
+    if (role === 'STUDENT') {
+      if (!formData.blockId) {
+        errors.blockId = 'Block/Wing is required.';
+      }
+      if (!formData.floorId) {
+        errors.floorId = 'Floor is required.';
+      }
+      if (!formData.roomNumber.trim()) {
+        errors.roomNumber = 'Room Number is required.';
+      }
     }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async (e) => {
+  // Step 1: Initiate registration by sending OTP to user's university email
+  const handleInitiateRegistration = async (e) => {
     e.preventDefault();
-    if (loading) return;
+    if (loading || sendingOtp) return;
 
     setSubmitError('');
 
-    if (!validate()) {
-      setSubmitError('Please fix the errors below before submitting.');
+    if (!validateForm()) {
+      setSubmitError('Please fix the errors below before continuing.');
       return;
     }
 
-    setLoading(true);
+    setSendingOtp(true);
     try {
-      await register({
+      const email = formData.email.trim().toLowerCase();
+      const res = await sendRegistrationOtp({
+        email,
+        role,
         name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        studentId: formData.studentId.trim(),
-        phone: formData.phone.trim() || undefined,
-        password: formData.password,
-        role: 'STUDENT',
-        hostelId: formData.hostelId,
-        blockId: formData.blockId,
-        floorId: formData.floorId,
-        roomNumber: formData.roomNumber.trim(),
-        roomId: formData.roomNumber.trim(),
       });
 
-      navigate('/student/dashboard', { replace: true });
+      setIsExistingAccount(Boolean(res?.data?.isExisting || res?.isExisting));
+      setScreenOtp(res?.data?.previewOtp || res?.previewOtp || '');
+      setShowOtpModal(true);
+      setOtpError('');
+      setOtpCode('');
+      setResendCooldown(60);
     } catch (err) {
       setSubmitError(
-        err.userMessage ||
-          err.response?.data?.message ||
+        err.response?.data?.message ||
+          err.userMessage ||
           err.message ||
-          'Registration failed. Please check your details.'
+          'Failed to send verification OTP to your email. Please check your email address.'
       );
     } finally {
-      setLoading(false);
+      setSendingOtp(false);
+    }
+  };
+
+  // Step 2: Resend OTP
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || sendingOtp) return;
+    setSendingOtp(true);
+    setOtpError('');
+    try {
+      const email = formData.email.trim().toLowerCase();
+      const res = await sendRegistrationOtp({
+        email,
+        role,
+        name: formData.name.trim(),
+      });
+      setScreenOtp(res?.data?.previewOtp || res?.previewOtp || '');
+      setResendCooldown(60);
+    } catch (err) {
+      setOtpError(
+        err.response?.data?.message || err.message || 'Failed to resend verification OTP.'
+      );
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  // Step 3: Verify OTP and finalize registration
+  const handleVerifyAndRegister = async (e) => {
+    e.preventDefault();
+    if (verifyingOtp) return;
+
+    const trimmedOtp = otpCode.trim();
+    if (!trimmedOtp || trimmedOtp.length < 4) {
+      setOtpError('Please enter the 6-digit verification code sent to your email.');
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setOtpError('');
+
+    try {
+      const payload = {
+        name: formData.name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim() || undefined,
+        password: formData.password,
+        role,
+        hostelId: formData.hostelId,
+        otp: trimmedOtp,
+      };
+
+      if (role === 'STUDENT') {
+        payload.studentId = formData.studentId.trim();
+        payload.blockId = formData.blockId;
+        payload.floorId = formData.floorId;
+        payload.roomNumber = formData.roomNumber.trim();
+        payload.roomId = formData.roomNumber.trim();
+      } else if (role === 'WARDEN') {
+        payload.employeeId = formData.employeeId.trim();
+      }
+
+      const registeredUser = await register(payload);
+      setShowOtpModal(false);
+
+      // Navigate to respective dashboard
+      const target = getDashboardPathForRole(registeredUser.role || role);
+      navigate(target, { replace: true });
+    } catch (err) {
+      setOtpError(
+        err.response?.data?.message ||
+          err.userMessage ||
+          err.message ||
+          'Verification failed. Invalid or expired OTP code.'
+      );
+    } finally {
+      setVerifyingOtp(false);
     }
   };
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col px-4 py-10">
-      <div className="rounded-3xl bg-white p-6 shadow-[0_6px_20px_-6px_rgba(15,23,42,0.18)] ring-1 ring-black/5 sm:p-8">
+    <div className="mx-auto flex max-w-lg flex-col px-4 py-8">
+      <div className="rounded-3xl bg-white p-6 shadow-[0_6px_25px_-6px_rgba(15,23,42,0.14)] ring-1 ring-black/5 sm:p-8">
+        {/* Header */}
         <div className="text-center">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-100 text-brand-600 shadow-xs">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
                 strokeLinecap="round"
@@ -279,22 +408,57 @@ export default function RegisterPage() {
               />
             </svg>
           </div>
-          <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900">
-            Student Registration
+          <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900">
+            {role === 'STUDENT' ? 'Student Registration' : 'Warden Registration'}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Create your account and reserve your hostel accommodation
+          <p className="mt-1 text-xs text-slate-500">
+            {role === 'STUDENT'
+              ? 'Create your account and reserve your hostel accommodation'
+              : 'Register as an official hostel warden with email verification'}
           </p>
         </div>
 
+        {/* Role Selector Tabs */}
+        <div className="mt-6 flex rounded-xl bg-slate-100 p-1 ring-1 ring-slate-200">
+          <button
+            type="button"
+            onClick={() => handleRoleChange('STUDENT')}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition ${
+              role === 'STUDENT'
+                ? 'bg-white text-brand-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+            </svg>
+            Student Resident
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRoleChange('WARDEN')}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-bold transition ${
+              role === 'WARDEN'
+                ? 'bg-white text-brand-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            Hostel Warden
+          </button>
+        </div>
+
         {submitError && (
-          <div className="mt-4 rounded-lg bg-red-50 p-3 text-xs font-semibold text-red-700">
+          <div className="mt-4 rounded-xl bg-red-50 p-3.5 text-xs font-medium text-red-700 ring-1 ring-red-200">
             {submitError}
           </div>
         )}
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          {/* Personal & Account Info */}
+        <form className="mt-5 space-y-4" onSubmit={handleInitiateRegistration}>
+          {/* Full Name */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
               Full Name *
@@ -305,8 +469,8 @@ export default function RegisterPage() {
               required
               value={formData.name}
               onChange={handleChange}
-              placeholder="e.g. Priya Verma"
-              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
+              placeholder={role === 'STUDENT' ? 'e.g. Priya Verma' : 'e.g. Dr. Rajesh Sharma'}
+              className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
                 formErrors.name
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                   : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
@@ -317,9 +481,10 @@ export default function RegisterPage() {
             )}
           </div>
 
+          {/* University Email */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-              University Email *
+              Official University Email (@bbdu.ac.in) *
             </label>
             <input
               name="email"
@@ -327,40 +492,47 @@ export default function RegisterPage() {
               required
               value={formData.email}
               onChange={handleChange}
-              placeholder="e.g. priya@bbdu.ac.in"
-              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
+              placeholder={role === 'STUDENT' ? 'e.g. student@gmail.com or rollnumber@bbdu.ac.in' : 'e.g. warden@gmail.com or warden@bbdu.ac.in'}
+              className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
                 formErrors.email
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                   : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
               }`}
             />
+            <p className="mt-1 text-[11px] text-slate-500">
+              An OTP will be sent to this email address (valid for 5 minutes).
+            </p>
             {formErrors.email && (
               <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>
             )}
           </div>
 
+          {/* Student ID or Employee ID & Phone */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-                Student ID *
+                {role === 'STUDENT' ? 'Student ID *' : 'Employee ID *'}
               </label>
               <input
-                name="studentId"
+                name={role === 'STUDENT' ? 'studentId' : 'employeeId'}
                 type="text"
                 required
-                value={formData.studentId}
+                value={role === 'STUDENT' ? formData.studentId : formData.employeeId}
                 onChange={handleChange}
-                placeholder="BBDU2026-..."
-                className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
-                  formErrors.studentId
+                placeholder={role === 'STUDENT' ? 'BBDU2026-...' : 'EMP-W-104'}
+                className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
+                  formErrors.studentId || formErrors.employeeId
                     ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                     : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
                 }`}
               />
-              {formErrors.studentId && (
-                <p className="mt-1 text-xs text-red-600">{formErrors.studentId}</p>
+              {(formErrors.studentId || formErrors.employeeId) && (
+                <p className="mt-1 text-xs text-red-600">
+                  {formErrors.studentId || formErrors.employeeId}
+                </p>
               )}
             </div>
+
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
                 Phone Number
@@ -371,11 +543,12 @@ export default function RegisterPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+919876543210"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-hidden focus:ring-2 focus:ring-brand-200"
+                className="mt-1 w-full rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-hidden focus:ring-2 focus:ring-brand-200"
               />
             </div>
           </div>
 
+          {/* Password */}
           <div>
             <div className="flex items-center justify-between">
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
@@ -384,7 +557,7 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="text-xs text-brand-600 hover:text-brand-800"
+                className="text-xs font-medium text-brand-600 hover:text-brand-800 cursor-pointer"
               >
                 {showPassword ? 'Hide' : 'Show'}
               </button>
@@ -396,7 +569,7 @@ export default function RegisterPage() {
               value={formData.password}
               onChange={handleChange}
               placeholder="Min 8 chars, 1 uppercase, 1 number"
-              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
+              className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
                 formErrors.password
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                   : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
@@ -407,6 +580,7 @@ export default function RegisterPage() {
             )}
           </div>
 
+          {/* Confirm Password */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
               Confirm Password *
@@ -418,7 +592,7 @@ export default function RegisterPage() {
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="Re-enter password"
-              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
+              className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
                 formErrors.confirmPassword
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                   : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
@@ -429,27 +603,29 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* Section Divider: Hostel Allocation Dropdowns */}
+          {/* Section Divider: Hostel Allocation or Assignment */}
           <div className="border-t border-slate-200 pt-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-brand-700">
-              Hostel Accommodation Allocation
+              {role === 'STUDENT' ? 'Hostel Accommodation Allocation' : 'Assigned Hostel Oversight'}
             </h3>
             <p className="text-[11px] text-slate-500">
-              Select your hostel, block, floor, and available room
+              {role === 'STUDENT'
+                ? 'Select your hostel, block, floor, and allocated room'
+                : 'Select the hostel you are officially assigned to manage'}
             </p>
           </div>
 
           {/* 1. HOSTEL NAME Dropdown */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-              Hostel Name *
+              {role === 'STUDENT' ? 'Hostel Name *' : 'Assigned Hostel *'}
             </label>
             <select
               name="hostelId"
               value={formData.hostelId}
               onChange={handleChange}
               disabled={loadingHostels}
-              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 focus:outline-hidden focus:ring-2 ${
+              className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-2 ${
                 formErrors.hostelId
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
                   : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
@@ -469,113 +645,230 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* 2. BLOCK / WING Dropdown */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-              Block / Wing *
-            </label>
-            <select
-              name="blockId"
-              value={formData.blockId}
-              onChange={handleChange}
-              disabled={!formData.hostelId || loadingBlocks}
-              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 disabled:bg-slate-100 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 ${
-                formErrors.blockId
-                  ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
-              }`}
-            >
-              <option value="">
-                {loadingBlocks ? 'Loading blocks...' : 'Select Block/Wing'}
-              </option>
-              {blocks.map((b) => (
-                <option key={b._id} value={b._id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-            {formErrors.blockId && (
-              <p className="mt-1 text-xs text-red-600">{formErrors.blockId}</p>
-            )}
-          </div>
+          {/* Student-Only Allocation Fields: Block, Floor, Room Number */}
+          {role === 'STUDENT' && (
+            <>
+              {/* 2. BLOCK / WING Dropdown */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                  Block / Wing *
+                </label>
+                <select
+                  name="blockId"
+                  value={formData.blockId}
+                  onChange={handleChange}
+                  disabled={!formData.hostelId || loadingBlocks}
+                  className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 disabled:bg-slate-100 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 ${
+                    formErrors.blockId
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
+                  }`}
+                >
+                  <option value="">
+                    {loadingBlocks ? 'Loading blocks...' : 'Select Block/Wing'}
+                  </option>
+                  {blocks.map((b) => (
+                    <option key={b._id} value={b._id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.blockId && (
+                  <p className="mt-1 text-xs text-red-600">{formErrors.blockId}</p>
+                )}
+              </div>
 
-          {/* 3. FLOOR Dropdown */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-              Floor *
-            </label>
-            <select
-              name="floorId"
-              value={formData.floorId}
-              onChange={handleChange}
-              disabled={!formData.blockId || loadingFloors}
-              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 disabled:bg-slate-100 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 ${
-                formErrors.floorId
-                  ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
-              }`}
-            >
-              <option value="">
-                {loadingFloors ? 'Loading floors...' : 'Select Floor'}
-              </option>
-              {floors.map((f) => (
-                <option key={f._id} value={f._id}>
-                  {f.name || f.floorNumber}
-                </option>
-              ))}
-            </select>
-            {formErrors.floorId && (
-              <p className="mt-1 text-xs text-red-600">{formErrors.floorId}</p>
-            )}
-          </div>
+              {/* 3. FLOOR Dropdown */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                  Floor *
+                </label>
+                <select
+                  name="floorId"
+                  value={formData.floorId}
+                  onChange={handleChange}
+                  disabled={!formData.blockId || loadingFloors}
+                  className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 disabled:bg-slate-100 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 ${
+                    formErrors.floorId
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
+                  }`}
+                >
+                  <option value="">
+                    {loadingFloors ? 'Loading floors...' : 'Select Floor'}
+                  </option>
+                  {floors.map((f) => (
+                    <option key={f._id} value={f._id}>
+                      {f.name || f.floorNumber}
+                    </option>
+                  ))}
+                </select>
+                {formErrors.floorId && (
+                  <p className="mt-1 text-xs text-red-600">{formErrors.floorId}</p>
+                )}
+              </div>
 
-          {/* 4. ROOM NUMBER Input */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
-              Room Number *
-            </label>
-            <input
-              name="roomNumber"
-              type="text"
-              required
-              value={formData.roomNumber}
-              onChange={handleChange}
-              placeholder="Enter your room number (e.g. 330, 106, 234, 420)"
-              disabled={!formData.floorId}
-              className={`mt-1 w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 disabled:bg-slate-100 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 ${
-                formErrors.roomNumber
-                  ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
-              }`}
-            />
-            {formErrors.roomNumber && (
-              <p className="mt-1 text-xs text-red-600">{formErrors.roomNumber}</p>
-            )}
-          </div>
+              {/* 4. ROOM NUMBER Input */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+                  Room Number *
+                </label>
+                <input
+                  name="roomNumber"
+                  type="text"
+                  required
+                  value={formData.roomNumber}
+                  onChange={handleChange}
+                  placeholder="Enter your room number (e.g. 330, 106, 234, 420)"
+                  disabled={!formData.floorId}
+                  className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 disabled:bg-slate-100 disabled:cursor-not-allowed focus:outline-hidden focus:ring-2 ${
+                    formErrors.roomNumber
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
+                      : 'border-slate-300 focus:border-brand-500 focus:ring-brand-200'
+                  }`}
+                />
+                {formErrors.roomNumber && (
+                  <p className="mt-1 text-xs text-red-600">{formErrors.roomNumber}</p>
+                )}
+              </div>
+            </>
+          )}
 
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
-            className="mt-2 flex w-full items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-brand-300 cursor-pointer"
+            disabled={sendingOtp || loading}
+            className="mt-3 flex w-full items-center justify-center rounded-xl bg-brand-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-brand-300 cursor-pointer"
           >
-            {loading ? (
+            {sendingOtp ? (
               <span className="flex items-center gap-2">
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                Registering &amp; Allocating Room...
+                Sending Verification OTP...
               </span>
             ) : (
-              'Create Student Account'
+              `Verify Email & Register as ${role === 'STUDENT' ? 'Student' : 'Warden'}`
             )}
           </button>
         </form>
 
         <p className="mt-5 text-center text-xs text-slate-500">
           Already registered?{' '}
-          <Link to="/login" className="font-semibold text-brand-600 hover:underline">
+          <Link to="/login" className="font-bold text-brand-600 hover:underline">
             Sign in
           </Link>
         </p>
       </div>
+
+      {/* MODAL: OTP EMAIL VERIFICATION */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-black/10 sm:p-7">
+            <div className="text-center">
+              <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+
+              <h2 className="mt-3 text-xl font-extrabold text-slate-900">
+                Email Verification Code
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                We sent a 6-digit OTP to{' '}
+                <span className="font-semibold text-slate-800">{formData.email}</span>
+              </p>
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                Code is valid for 5 minutes
+              </p>
+            </div>
+
+            {screenOtp && (
+              <div className="mt-3.5 rounded-2xl bg-brand-50 p-3.5 text-center ring-1 ring-brand-200">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-brand-700">
+                  OTP Verification Code
+                </span>
+                <div className="mt-1 font-mono text-2xl font-extrabold tracking-[6px] text-brand-900">
+                  {screenOtp}
+                </div>
+              </div>
+            )}
+
+            {isExistingAccount && (
+              <div className="mt-3 rounded-xl bg-amber-50 p-2.5 text-xs text-amber-800 ring-1 ring-amber-200 text-center">
+                <span>Existing account detected! Verifying OTP will update your password & details. Or </span>
+                <Link to="/login" className="font-bold underline text-amber-900 hover:text-amber-950">
+                  Click here to Sign In
+                </Link>
+              </div>
+            )}
+
+
+
+            {otpError && (
+              <div className="mt-4 rounded-xl bg-red-50 p-3 text-xs font-medium text-red-700 ring-1 ring-red-200">
+                {otpError}
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyAndRegister} className="mt-5 space-y-4">
+              <div>
+                <label className="block text-center text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Enter 6-Digit Code
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  autoFocus
+                  required
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="••••••"
+                  className="mt-2 h-14 w-full rounded-2xl border-2 border-slate-300 bg-slate-50 text-center font-mono text-2xl font-extrabold tracking-[10px] text-slate-900 placeholder:tracking-widest placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:outline-hidden focus:ring-4 focus:ring-brand-100"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={verifyingOtp || otpCode.length < 4}
+                className="flex w-full items-center justify-center rounded-xl bg-brand-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-brand-300 cursor-pointer"
+              >
+                {verifyingOtp ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Verifying &amp; Registering...
+                  </span>
+                ) : (
+                  'Verify & Complete Registration'
+                )}
+              </button>
+
+              <div className="flex items-center justify-between pt-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowOtpModal(false)}
+                  className="font-medium text-slate-500 hover:text-slate-800 cursor-pointer"
+                >
+                  &larr; Edit Details
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCooldown > 0 || sendingOtp}
+                  className="font-bold text-brand-600 hover:text-brand-800 disabled:cursor-not-allowed disabled:text-slate-400 cursor-pointer"
+                >
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,13 @@ import * as authController from '../controllers/auth.controller.js';
 import { requireAuth, requireAuthAllowPasswordChange, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { authLimiter } from '../middleware/rateLimiter.js';
-import { registerSchema, loginSchema, changePasswordSchema } from '../validators/auth.validator.js';
+import {
+  registerSchema,
+  loginSchema,
+  changePasswordSchema,
+  sendOtpSchema,
+  verifyOtpSchema,
+} from '../validators/auth.validator.js';
 import { ROLES } from '../constants/roles.js';
 import env from '../config/env.js';
 
@@ -14,6 +20,10 @@ router.get('/hostels', authController.getPublicHostels);
 router.get('/blocks', authController.getPublicBlocks);
 router.get('/floors', authController.getPublicFloors);
 router.get('/rooms', authController.getPublicRooms);
+
+// Registration OTP email verification endpoints
+router.post('/send-otp', authLimiter, validate(sendOtpSchema), authController.sendOtp);
+router.post('/verify-otp', authLimiter, validate(verifyOtpSchema), authController.verifyOtp);
 
 router.post('/register', authLimiter, validate(registerSchema), authController.register);
 router.post('/login', authLimiter, validate(loginSchema), authController.login);

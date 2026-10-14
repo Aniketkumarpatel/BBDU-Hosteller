@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { ROLES, ROLE_VALUES } from '../constants/roles.js';
 
-// Public self-registration only allows the STUDENT role (or HOSTEL_STAFF if configured, but default is STUDENT).
-// SUPER_ADMIN, AUTHORITY, and WARDEN can NEVER be registered through public endpoints.
-const PUBLIC_ALLOWED_ROLES = [ROLES.STUDENT];
+// Public self-registration allows STUDENT and WARDEN roles with email OTP verification.
+// SUPER_ADMIN and AUTHORITY can NEVER be registered through public endpoints.
+const PUBLIC_ALLOWED_ROLES = [ROLES.STUDENT, ROLES.WARDEN];
 
 const objectIdRegex = /^[0-9a-fA-F]{24}$/;
 
@@ -32,6 +32,41 @@ export const changePasswordSchema = z
     path: ['newPassword'],
   });
 
+export const sendOtpSchema = z.object({
+  email: z
+    .string({ required_error: 'Email is required' })
+    .trim()
+    .toLowerCase()
+    .email('Please provide a valid email address')
+    .max(254, 'Email cannot exceed 254 characters'),
+  role: z
+    .enum(ROLE_VALUES, {
+      errorMap: () => ({ message: `Role must be one of: ${ROLE_VALUES.join(', ')}` }),
+    })
+    .default(ROLES.STUDENT)
+    .refine(
+      (role) => PUBLIC_ALLOWED_ROLES.includes(role),
+      {
+        message: 'Self-registration OTP is restricted to STUDENT and WARDEN accounts.',
+      }
+    ),
+  name: z.string().trim().max(120).optional(),
+});
+
+export const verifyOtpSchema = z.object({
+  email: z
+    .string({ required_error: 'Email is required' })
+    .trim()
+    .toLowerCase()
+    .email('Please provide a valid email address')
+    .max(254, 'Email cannot exceed 254 characters'),
+  otp: z
+    .string({ required_error: 'OTP code is required' })
+    .trim()
+    .min(4, 'OTP code must be at least 4 characters')
+    .max(10, 'OTP code cannot exceed 10 characters'),
+});
+
 export const registerSchema = z.object({
   name: z
     .string({ required_error: 'Name is required' })
@@ -43,10 +78,7 @@ export const registerSchema = z.object({
     .trim()
     .toLowerCase()
     .email('Please provide a valid email address')
-    .max(254, 'Email cannot exceed 254 characters')
-    .refine((val) => val.trim().toLowerCase().endsWith('@bbdu.ac.in'), {
-      message: 'Please use your official BBDU email address ending with @bbdu.ac.in.',
-    }),
+    .max(254, 'Email cannot exceed 254 characters'),
   password: passwordPolicySchema,
   role: z
     .enum(ROLE_VALUES, {
@@ -56,7 +88,7 @@ export const registerSchema = z.object({
     .refine(
       (role) => PUBLIC_ALLOWED_ROLES.includes(role),
       {
-        message: 'Public self-registration is restricted to STUDENT accounts. Administrative roles must be provisioned by a SUPER_ADMIN.',
+        message: 'Public self-registration is restricted to STUDENT and WARDEN accounts. Administrative roles must be provisioned by a SUPER_ADMIN.',
       }
     ),
   phone: z
@@ -73,11 +105,11 @@ export const registerSchema = z.object({
   ),
   blockId: z.preprocess(
     (val) => (val === undefined || val === null ? '' : String(val)),
-    z.string().trim().min(1, 'Block/Wing is required.').regex(objectIdRegex, 'Block/Wing is required.')
+    z.string().trim().optional()
   ),
   floorId: z.preprocess(
     (val) => (val === undefined || val === null ? '' : String(val)),
-    z.string().trim().min(1, 'Floor is required.').regex(objectIdRegex, 'Floor is required.')
+    z.string().trim().optional()
   ),
   roomNumber: z.preprocess(
     (val) => (val !== undefined && val !== null && String(val).trim() !== '' ? String(val).trim() : undefined),
@@ -88,9 +120,31 @@ export const registerSchema = z.object({
     z.string().optional()
   ),
   departmentId: z.string().regex(objectIdRegex, 'Invalid department ID format').optional().or(z.literal('')),
-}).refine((data) => Boolean(data.roomNumber || data.roomId), {
-  message: 'Room Number is required.',
-  path: ['roomNumber'],
+  otp: z.string().trim().optional(),
+}).superRefine((data, ctx) => {
+  if (data.role === ROLES.STUDENT) {
+    if (!data.blockId || !objectIdRegex.test(data.blockId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Block/Wing is required.',
+        path: ['blockId'],
+      });
+    }
+    if (!data.floorId || !objectIdRegex.test(data.floorId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Floor is required.',
+        path: ['floorId'],
+      });
+    }
+    if (!data.roomNumber && !data.roomId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Room Number is required.',
+        path: ['roomNumber'],
+      });
+    }
+  }
 });
 
 export const loginSchema = z.object({

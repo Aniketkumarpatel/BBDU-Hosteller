@@ -2,6 +2,33 @@ import asyncHandler from '../utils/asyncHandler.js';
 import * as authService from '../services/auth.service.js';
 
 /**
+ * POST /api/auth/send-otp
+ */
+export const sendOtp = asyncHandler(async (req, res) => {
+  const result = await authService.sendRegistrationOtp(req.body);
+  res.status(200).json({
+    success: true,
+    message: result.message,
+    data: {
+      isExisting: result.isExisting,
+      previewOtp: result.previewOtp,
+    },
+  });
+});
+
+/**
+ * POST /api/auth/verify-otp
+ */
+export const verifyOtp = asyncHandler(async (req, res) => {
+  const result = await authService.verifyRegistrationOtp(req.body);
+  res.status(200).json({
+    success: true,
+    message: result.message,
+    data: result,
+  });
+});
+
+/**
  * POST /api/auth/register
  */
 export const register = asyncHandler(async (req, res) => {
