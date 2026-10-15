@@ -8,8 +8,8 @@ const TABS = [
   { to: '/mess', labelKey: 'tab.mess' },
 ];
 
-// Mess and Rooms are wide, table-like pages: they get more room than the problem list
-const WIDE_PATHS = ['/mess', '/virtual-visit'];
+// Rooms is a wide, gallery-style page: it gets more room than the problem list
+const WIDE_PATHS = ['/virtual-visit'];
 
 /** Warden shell (DEC-029): Problems and People, plus Rooms (virtual visit media) and Mess, as simple tabs. */
 export default function WardenPilotLayout() {

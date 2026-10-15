@@ -36,8 +36,8 @@ export default function StudentPilotLayout() {
   const block = profile?.blockId?.name || '';
   const hostel = profile?.hostelId?.name || '';
   const fullScreen = pathname.startsWith('/student/report');
-  // Mess and Virtual Visit are wide, gallery-style pages; the rest is a narrow phone column
-  const wide = pathname.startsWith('/mess') || pathname.startsWith('/virtual-visit');
+  // Virtual Visit is a wide, gallery-style page; everything else is a narrow phone column
+  const wide = pathname.startsWith('/virtual-visit');
 
   return (
     <div className="min-h-screen bg-slate-100">

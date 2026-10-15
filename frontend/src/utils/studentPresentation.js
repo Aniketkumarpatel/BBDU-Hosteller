@@ -129,7 +129,7 @@ export const buildReportPayload = ({ category, issueType, text = '', priority = 
 export const MEAL_ORDER = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'];
 
 // The meal a student most likely wants to know about at this hour of the day
-const mealForHour = (hour) => {
+export const mealForHour = (hour) => {
   if (hour < 10) return 'BREAKFAST';
   if (hour < 15) return 'LUNCH';
   if (hour < 18) return 'SNACKS';

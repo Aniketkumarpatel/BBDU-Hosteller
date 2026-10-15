@@ -67,7 +67,7 @@ import MaintenanceDashboardPage from '../pages/maintenance/MaintenanceDashboardP
 import MaintenancePlanDetailPage from '../pages/maintenance/MaintenancePlanDetailPage.jsx';
 
 // Mess & Dining Management (Step 10)
-import MessDashboardPage from '../pages/mess/MessDashboardPage.jsx';
+import MessPage from '../pages/mess/MessPage.jsx';
 
 // Cleaning & Housekeeping Management (Step 11)
 import CleaningDashboardPage from '../pages/cleaning/CleaningDashboardPage.jsx';
@@ -175,7 +175,7 @@ export default function AppRoutes() {
         {/* Mess (Step 10) and Room Virtual Visit: shared by several roles, shown in the viewer's own shell */}
         <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
           <Route element={<RoleAwareLayout />}>
-            <Route path="/mess" element={<MessDashboardPage />} />
+            <Route path="/mess" element={<MessPage />} />
             <Route path="/virtual-visit" element={<VirtualVisitPage />} />
           </Route>
         </Route>
