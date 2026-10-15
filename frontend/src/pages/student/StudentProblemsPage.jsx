@@ -5,6 +5,7 @@ import complaintService from '../../services/complaintService.js';
 import TrackerCard from '../../components/student/TrackerCard.jsx';
 import Icon from '../../components/jobs/icons.jsx';
 import { getStudentStage, isActive } from '../../utils/studentPresentation.js';
+import useAutoRefresh from '../../hooks/useAutoRefresh.js';
 
 const FILTERS = ['active', 'fixed', 'all'];
 const byNewest = (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
@@ -17,8 +18,8 @@ export default function StudentProblemsPage() {
   const [errorKey, setErrorKey] = useState('');
   const [filter, setFilter] = useState('active');
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async ({ quiet = false } = {}) => {
+    if (!quiet) setLoading(true);
     try {
       const res = await complaintService.getMyComplaints();
       const rows = Array.isArray(res?.data) ? res.data : res?.data?.complaints;
@@ -29,15 +30,19 @@ export default function StudentProblemsPage() {
         throw new Error('load failed');
       }
     } catch {
-      setErrorKey('error.load');
+      // A failed background refresh keeps the old list on screen instead of replacing it with an error
+      if (!quiet) setErrorKey('error.load');
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Stay in step with what the Warden, the technician and the student do (DEC-036)
+  useAutoRefresh(() => load({ quiet: true }));
 
   const counts = useMemo(
     () => ({

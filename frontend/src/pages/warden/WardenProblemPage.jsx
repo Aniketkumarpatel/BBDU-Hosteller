@@ -19,6 +19,7 @@ import {
   needsTriage,
   rankTechnicians,
 } from '../../utils/problemPresentation.js';
+import useAutoRefresh from '../../hooks/useAutoRefresh.js';
 
 /**
  * One problem, for the Warden (DEC-029). Answers in order: where, what is wrong, who has
@@ -38,18 +39,21 @@ export default function WardenProblemPage() {
   const [submitting, setSubmitting] = useState(false);
   const [sheetError, setSheetError] = useState('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ quiet = false } = {}) => {
     try {
       const res = await complaintService.getComplaintDetails(id);
       if (res.success && res.data) {
         setProblem(res.data);
         setErrorKey('');
-      } else {
+      } else if (!quiet) {
         setErrorKey('error.notFound');
       }
     } catch (err) {
-      const status = err?.response?.status;
-      setErrorKey(status === 404 || status === 403 ? 'error.notFound' : 'error.load');
+      // A failed background refresh keeps the screen as it is instead of replacing it with an error
+      if (!quiet) {
+        const status = err?.response?.status;
+        setErrorKey(status === 404 || status === 403 ? 'error.notFound' : 'error.load');
+      }
     } finally {
       setLoading(false);
     }
@@ -59,6 +63,9 @@ export default function WardenProblemPage() {
     setLoading(true);
     load();
   }, [load]);
+
+  // Stay in step with what the Warden, the technician and the student do (DEC-036)
+  useAutoRefresh(() => load({ quiet: true }));
 
   const giveable = canGiveToTechnician(problem);
   const changeable = canChangeTechnician(problem);

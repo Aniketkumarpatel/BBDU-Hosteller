@@ -509,6 +509,19 @@
 
 ---
 
+### DEC-036: Every Pilot Screen Keeps Itself Up To Date
+- **Date**: 2026-10-15
+- **Status**: Accepted (built and driven in a real browser 2026-10-15)
+- **Context**: During the first walkthrough the Warden's screen said "This problem is solved" while the student's screen for the same problem still said "Given to a technician" with the later steps greyed out. Nothing was wrong with the data or the status rules: the student's problem page loaded once and never asked again. Of the six pilot screens that show something other people change, three detail screens (student problem, Warden problem, technician job) and the student's Problems list never refreshed, and the other three lists refreshed only every 60 seconds.
+- **Alternatives Considered**:
+  - *Alternative A: Tell people to reload*: Not acceptable for low-literacy users, and a stale "still waiting" screen makes people phone the Warden.
+  - *Alternative B: Server push (WebSocket or server-sent events)*: Instant, but needs a second connection type, reconnect handling and proxy support on the host that is not chosen yet (Q1).
+  - *Alternative C: One shared polling helper, `useAutoRefresh`, on all six screens (Selected)*: Asks again every 20 seconds while the screen is visible, at once when the person returns to the tab, focuses the window or the phone gets its connection back, never overlaps itself, and pauses while the tab is hidden.
+- **Rationale**: A pilot of about a hundred users makes a few requests a minute per open screen, which is small next to the benefit, and polling needs no new infrastructure. A failed background refresh keeps the old data on screen instead of replacing the page with an error, so a Wi-Fi blip does not blank anything. The helper replaces three separate hand-written 60 second timers, so all screens behave the same.
+- **Consequences**: A change by another person shows within about 20 seconds, not instantly. If push is wanted later (after hosting is decided) only the helper changes. The notification count in the tab bar still refreshes every 60 seconds and can be moved to the same helper. The helper itself has no automated test because it needs a browser; it was checked by changing a problem as the other roles while the student's page stayed open (page updated by itself in 4 and 10 seconds).
+
+---
+
 ## Decision Log Template (For New Tasks)
 
 When making any new non-trivial decision, copy and fill out this template at the bottom of this file:

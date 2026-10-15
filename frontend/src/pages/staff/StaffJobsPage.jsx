@@ -7,8 +7,8 @@ import JobCard from '../../components/jobs/JobCard.jsx';
 import Icon from '../../components/jobs/icons.jsx';
 import { STAGE_STYLE } from '../../components/jobs/stageStyle.js';
 import { countActionable, groupJobs } from '../../utils/jobPresentation.js';
+import useAutoRefresh from '../../hooks/useAutoRefresh.js';
 
-const REFRESH_MS = 60000;
 // Sections that need no action start folded away so the list stays short
 const COLLAPSED_BY_DEFAULT = ['waiting', 'done'];
 
@@ -57,13 +57,8 @@ export default function StaffJobsPage() {
     load();
   }, [load]);
 
-  // Keep the list fresh while the screen is visible
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') load({ quiet: true });
-    }, REFRESH_MS);
-    return () => clearInterval(timer);
-  }, [load]);
+  // Stay in step with what the Warden, the technician and the student do (DEC-036)
+  useAutoRefresh(() => load({ quiet: true }));
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 

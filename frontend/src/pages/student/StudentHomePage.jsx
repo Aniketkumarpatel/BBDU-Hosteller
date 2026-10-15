@@ -8,8 +8,7 @@ import TrackerCard from '../../components/student/TrackerCard.jsx';
 import Icon from '../../components/jobs/icons.jsx';
 import CategoryArt from '../../components/student/CategoryArt.jsx';
 import { REPORT_CATEGORIES, getStudentStage, isActive, pickMeal } from '../../utils/studentPresentation.js';
-
-const REFRESH_MS = 60000;
+import useAutoRefresh from '../../hooks/useAutoRefresh.js';
 
 const byNewest = (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
 
@@ -66,10 +65,8 @@ export default function StudentHomePage() {
     };
   }, [user?.hostelId]);
 
-  useEffect(() => {
-    const timer = setInterval(() => document.visibilityState === 'visible' && load({ quiet: true }), REFRESH_MS);
-    return () => clearInterval(timer);
-  }, [load]);
+  // Stay in step with what the Warden, the technician and the student do (DEC-036)
+  useAutoRefresh(() => load({ quiet: true }));
 
   const active = useMemo(() => problems.filter(isActive).sort(byNewest), [problems]);
   const fixed = useMemo(() => problems.filter((p) => getStudentStage(p) === 'done').sort(byNewest).slice(0, 3), [problems]);

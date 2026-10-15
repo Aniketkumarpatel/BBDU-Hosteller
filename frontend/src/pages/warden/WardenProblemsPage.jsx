@@ -18,8 +18,8 @@ import {
   needsTriage,
   rankTechnicians,
 } from '../../utils/problemPresentation.js';
+import useAutoRefresh from '../../hooks/useAutoRefresh.js';
 
-const REFRESH_MS = 60000;
 
 // Tiles that need the Warden are coloured; the rest are calm
 const TILE_STYLE = {
@@ -75,12 +75,8 @@ export default function WardenProblemsPage() {
     load();
   }, [load]);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (document.visibilityState === 'visible') load({ quiet: true });
-    }, REFRESH_MS);
-    return () => clearInterval(timer);
-  }, [load]);
+  // Stay in step with what the Warden, the technician and the student do (DEC-036)
+  useAutoRefresh(() => load({ quiet: true }));
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 

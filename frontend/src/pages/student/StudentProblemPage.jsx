@@ -8,6 +8,7 @@ import Timeline from '../../components/student/Timeline.jsx';
 import Icon from '../../components/jobs/icons.jsx';
 import CategoryArt from '../../components/student/CategoryArt.jsx';
 import { getStudentStage, needsConfirmation } from '../../utils/studentPresentation.js';
+import useAutoRefresh from '../../hooks/useAutoRefresh.js';
 
 const REASON_KEYS = ['confirm.reason.r1', 'confirm.reason.r2', 'confirm.reason.r3', 'confirm.reason.r4'];
 // The server rejects a "not fixed" reason shorter than 5 characters
@@ -32,18 +33,21 @@ export default function StudentProblemPage() {
   const [reasonText, setReasonText] = useState('');
   const [sheetError, setSheetError] = useState('');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ quiet = false } = {}) => {
     try {
       const res = await complaintService.getComplaintDetails(id);
       if (res.success && res.data) {
         setProblem(res.data);
         setErrorKey('');
-      } else {
+      } else if (!quiet) {
         setErrorKey('error.notFound');
       }
     } catch (err) {
-      const status = err?.response?.status;
-      setErrorKey(status === 404 || status === 403 ? 'error.notFound' : 'error.load');
+      // A failed background refresh keeps the screen as it is instead of replacing it with an error
+      if (!quiet) {
+        const status = err?.response?.status;
+        setErrorKey(status === 404 || status === 403 ? 'error.notFound' : 'error.load');
+      }
     } finally {
       setLoading(false);
     }
@@ -53,6 +57,9 @@ export default function StudentProblemPage() {
     setLoading(true);
     load();
   }, [load]);
+
+  // Stay in step with what the Warden, the technician and the student do (DEC-036)
+  useAutoRefresh(() => load({ quiet: true }));
 
   const accept = async () => {
     setBusy(true);
