@@ -32,13 +32,24 @@ export const changePasswordSchema = z
     path: ['newPassword'],
   });
 
+const isBbduEmail = (email) => {
+  const domain = (email || '').trim().toLowerCase().split('@')[1];
+  return domain === 'bbdu.ac.in' || (domain ? domain.endsWith('.bbdu.ac.in') : false);
+};
+
 export const sendOtpSchema = z.object({
   email: z
     .string({ required_error: 'Email is required' })
     .trim()
     .toLowerCase()
     .email('Please provide a valid email address')
-    .max(254, 'Email cannot exceed 254 characters'),
+    .max(254, 'Email cannot exceed 254 characters')
+    .refine(
+      isBbduEmail,
+      {
+        message: 'Please use your official BBDU email address ending with @bbdu.ac.in',
+      }
+    ),
   role: z
     .enum(ROLE_VALUES, {
       errorMap: () => ({ message: `Role must be one of: ${ROLE_VALUES.join(', ')}` }),
@@ -78,7 +89,13 @@ export const registerSchema = z.object({
     .trim()
     .toLowerCase()
     .email('Please provide a valid email address')
-    .max(254, 'Email cannot exceed 254 characters'),
+    .max(254, 'Email cannot exceed 254 characters')
+    .refine(
+      isBbduEmail,
+      {
+        message: 'Please use your official BBDU email address ending with @bbdu.ac.in',
+      }
+    ),
   password: passwordPolicySchema,
   role: z
     .enum(ROLE_VALUES, {
