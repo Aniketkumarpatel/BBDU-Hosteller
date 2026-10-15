@@ -23,17 +23,12 @@ app.use(
   })
 );
 
-// CORS - strictly allow configured frontend origin(s)
-const allowedOrigins = env.CLIENT_URL.split(',').map((o) => o.trim()).filter(Boolean);
+// CORS - allow all origins so requests from localhost, LAN IPs (mobile/tablet), and deployments never fail
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (e.g. mobile apps, test runners, curl)
-      if (!origin || allowedOrigins.includes(origin) || (!env.isProduction && (origin.includes('localhost') || origin.includes('127.0.0.1')))) {
-        callback(null, true);
-      } else {
-        callback(new Error('CORS request from unauthorized origin blocked.'));
-      }
+    origin: (_origin, callback) => {
+      // Allow all origins with credentials support
+      callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
