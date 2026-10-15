@@ -46,6 +46,7 @@ export default function RegisterPage() {
   const [isExistingAccount, setIsExistingAccount] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [screenOtp, setScreenOtp] = useState('');
+  const [otpDelivered, setOtpDelivered] = useState(false);
   const [otpError, setOtpError] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [sendingOtp, setSendingOtp] = useState(false);
@@ -224,10 +225,15 @@ export default function RegisterPage() {
 
     const trimmedEmail = formData.email.trim().toLowerCase();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const domain = trimmedEmail.split('@')[1];
+    const isBbduEmail = domain === 'bbdu.ac.in' || (domain ? domain.endsWith('.bbdu.ac.in') : false);
+
     if (!trimmedEmail) {
       errors.email = 'Email address is required.';
     } else if (!emailRegex.test(trimmedEmail)) {
       errors.email = 'Please enter a valid email address.';
+    } else if (!isBbduEmail) {
+      errors.email = 'Sirf @bbdu.ac.in wali official email address hi allowed hai.';
     }
 
     if (role === 'STUDENT') {
@@ -300,7 +306,10 @@ export default function RegisterPage() {
       });
 
       setIsExistingAccount(Boolean(res?.data?.isExisting || res?.isExisting));
-      setScreenOtp(res?.data?.previewOtp || res?.previewOtp || '');
+      const preview = res?.data?.previewOtp || res?.previewOtp || '';
+      const delivered = Boolean(res?.data?.delivered || res?.delivered);
+      setOtpDelivered(delivered);
+      setScreenOtp(preview);
       setShowOtpModal(true);
       setOtpError('');
       setOtpCode('');
@@ -329,7 +338,10 @@ export default function RegisterPage() {
         role,
         name: formData.name.trim(),
       });
-      setScreenOtp(res?.data?.previewOtp || res?.previewOtp || '');
+      const preview = res?.data?.previewOtp || res?.previewOtp || '';
+      const delivered = Boolean(res?.data?.delivered || res?.delivered);
+      setOtpDelivered(delivered);
+      setScreenOtp(preview);
       setResendCooldown(60);
     } catch (err) {
       setOtpError(
@@ -481,7 +493,7 @@ export default function RegisterPage() {
             )}
           </div>
 
-          {/* University Email */}
+          {/* Email Address */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
               Official University Email (@bbdu.ac.in) *
@@ -492,7 +504,7 @@ export default function RegisterPage() {
               required
               value={formData.email}
               onChange={handleChange}
-              placeholder={role === 'STUDENT' ? 'e.g. student@gmail.com or rollnumber@bbdu.ac.in' : 'e.g. warden@gmail.com or warden@bbdu.ac.in'}
+              placeholder={role === 'STUDENT' ? 'e.g. student@bbdu.ac.in' : 'e.g. warden@bbdu.ac.in'}
               className={`mt-1 w-full rounded-xl border px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 ${
                 formErrors.email
                   ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
@@ -500,7 +512,7 @@ export default function RegisterPage() {
               }`}
             />
             <p className="mt-1 text-[11px] text-slate-500">
-              An OTP will be sent to this email address (valid for 5 minutes).
+              Sirf official <span className="font-semibold text-slate-700">@bbdu.ac.in</span> email address hi allowed hai. Is par 6-digit OTP verification code aayega.
             </p>
             {formErrors.email && (
               <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>
@@ -776,10 +788,10 @@ export default function RegisterPage() {
               </div>
 
               <h2 className="mt-3 text-xl font-extrabold text-slate-900">
-                Email Verification Code
+                Confirm Your Email
               </h2>
               <p className="mt-1 text-xs text-slate-500">
-                We sent a 6-digit OTP to{' '}
+                Verification code sent to{' '}
                 <span className="font-semibold text-slate-800">{formData.email}</span>
               </p>
               <p className="mt-0.5 text-[11px] text-slate-400">
@@ -787,14 +799,36 @@ export default function RegisterPage() {
               </p>
             </div>
 
+            {/* Email delivery status banner */}
+            {(otpDelivered || !screenOtp) && (
+              <div className="mt-3.5 rounded-2xl bg-emerald-50 p-4 text-center ring-1 ring-emerald-200">
+                <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-800">
+                  <svg className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  OTP Sent to Your Gmail
+                </div>
+                <p className="mt-1 text-xs text-emerald-800">
+                  Please open your Gmail inbox at <strong className="font-bold">{formData.email}</strong> and enter the 6-digit verification code below.
+                </p>
+                <p className="mt-1 text-[11px] text-emerald-600">
+                  Tip: If you don't see it in Primary, please check your <strong>Spam</strong> or <strong>Promotions</strong> folder.
+                </p>
+              </div>
+            )}
+
+            {/* Developer fallback banner when SMTP is not yet configured in .env */}
             {screenOtp && (
-              <div className="mt-3.5 rounded-2xl bg-brand-50 p-3.5 text-center ring-1 ring-brand-200">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-brand-700">
-                  OTP Verification Code
+              <div className="mt-3.5 rounded-2xl bg-amber-50 p-3.5 text-center ring-1 ring-amber-200">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                  Development Mode (SMTP Not Set in backend/.env)
                 </span>
-                <div className="mt-1 font-mono text-2xl font-extrabold tracking-[6px] text-brand-900">
+                <div className="mt-1 font-mono text-2xl font-extrabold tracking-[6px] text-amber-950">
                   {screenOtp}
                 </div>
+                <p className="mt-1 text-[11px] text-amber-700">
+                  To send real OTP emails directly to Gmail inboxes, add EMAIL_USER and EMAIL_PASS to backend/.env.
+                </p>
               </div>
             )}
 
