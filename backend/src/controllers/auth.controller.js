@@ -11,6 +11,8 @@ export const sendOtp = asyncHandler(async (req, res) => {
     message: result.message,
     data: {
       isExisting: result.isExisting,
+      delivered: result.delivered,
+      simulated: result.simulated,
       previewOtp: result.previewOtp,
     },
   });
