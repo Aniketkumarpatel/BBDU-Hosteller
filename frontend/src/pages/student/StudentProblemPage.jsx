@@ -198,6 +198,29 @@ export default function StudentProblemPage() {
         <h2 className="text-lg font-bold text-slate-900">{problem.title}</h2>
         <p className="mt-1 text-sm text-slate-500">{t(`category.${problem.category}`)}</p>
         {problem.description && <p className="mt-3 text-base leading-relaxed text-slate-700">{problem.description}</p>}
+        {problem.attachmentUrl && (
+          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+            <a
+              href={problem.attachmentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block group"
+            >
+              <img
+                src={problem.attachmentUrl}
+                alt={problem.title || t('problem.photo')}
+                className="max-h-72 w-full object-cover transition group-hover:opacity-95"
+              />
+              <div className="flex items-center justify-between p-3 text-xs font-semibold text-slate-600 bg-white border-t border-slate-100">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  {t('problem.photo')}
+                </span>
+                <span className="text-brand-600 font-bold">Open ↗</span>
+              </div>
+            </a>
+          </div>
+        )}
         <p className="mt-3 text-xs text-slate-400">{problem.complaintId}</p>
       </section>
 

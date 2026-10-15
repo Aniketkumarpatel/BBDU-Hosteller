@@ -178,6 +178,29 @@ export default function StaffJobPage() {
               </span>
             )}
           </div>
+          {job.attachmentUrl && (
+            <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+              <a
+                href={job.attachmentUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block group"
+              >
+                <img
+                  src={job.attachmentUrl}
+                  alt={job.title || t('problem.photo')}
+                  className="max-h-72 w-full object-cover transition group-hover:opacity-95"
+                />
+                <div className="flex items-center justify-between p-3 text-xs font-semibold text-slate-600 bg-white border-t border-slate-100">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    {t('problem.photo')}
+                  </span>
+                  <span className="text-brand-600 font-bold">Open ↗</span>
+                </div>
+              </a>
+            </div>
+          )}
         </div>
 
         {/* 3. How soon */}
