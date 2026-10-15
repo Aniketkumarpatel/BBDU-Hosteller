@@ -101,7 +101,7 @@ export default function PilotShell({ homePath, tabs = [], width = 'max-w-2xl' })
                 key={tab.to}
                 to={tab.to}
                 className={({ isActive }) =>
-                  `flex h-12 flex-1 items-center justify-center border-b-4 text-base font-bold transition ${
+                  `flex h-12 flex-1 items-center justify-center border-b-4 font-bold transition ${tabs.length > 3 ? 'text-sm sm:text-base' : 'text-base'} ${
                     isActive ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`
                 }

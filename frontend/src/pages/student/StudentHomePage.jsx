@@ -7,7 +7,7 @@ import messService from '../../services/messService.js';
 import TrackerCard from '../../components/student/TrackerCard.jsx';
 import Icon from '../../components/jobs/icons.jsx';
 import CategoryArt from '../../components/student/CategoryArt.jsx';
-import { REPORT_CATEGORIES, getStudentStage, isActive } from '../../utils/studentPresentation.js';
+import { REPORT_CATEGORIES, getStudentStage, isActive, pickMeal } from '../../utils/studentPresentation.js';
 
 const REFRESH_MS = 60000;
 
@@ -49,11 +49,13 @@ export default function StudentHomePage() {
 
   useEffect(() => {
     let active = true;
-    messService.getMesses()
+    // The menu of the student's own hostel; a student without a hostel simply sees no menu
+    const hostelId = user?.hostelId?._id || user?.hostelId;
+    if (!hostelId) return undefined;
+    messService.getMesses({ hostelId, isActive: true })
       .then(async (res) => {
         if (!active || !res?.success || !res?.data?.length) return;
-        const target = res.data[0];
-        const menuRes = await messService.getTodayMenu(target._id);
+        const menuRes = await messService.getTodayMenu(res.data[0]._id);
         if (active && menuRes?.success) {
           setTodayMenu(menuRes.data);
         }
@@ -62,7 +64,7 @@ export default function StudentHomePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [user?.hostelId]);
 
   useEffect(() => {
     const timer = setInterval(() => document.visibilityState === 'visible' && load({ quiet: true }), REFRESH_MS);
@@ -72,6 +74,8 @@ export default function StudentHomePage() {
   const active = useMemo(() => problems.filter(isActive).sort(byNewest), [problems]);
   const fixed = useMemo(() => problems.filter((p) => getStudentStage(p) === 'done').sort(byNewest).slice(0, 3), [problems]);
   const firstName = (user?.name || '').trim().split(/\s+/)[0];
+  const meal = pickMeal(todayMenu, new Date().getHours());
+  const messLine = meal ? `${t(`meal.${meal.meal}`)}: ${meal.items.slice(0, 3).join(', ')}` : t('student.mess.none');
 
   return (
     <div className="space-y-7 px-4 pt-4">
@@ -103,98 +107,6 @@ export default function StudentHomePage() {
               <span className="text-xs font-semibold leading-tight text-slate-800">{t(`category.${key}`)}</span>
             </Link>
           ))}
-        </div>
-      </section>
-
-      {/* Today's Mess Menu Quick Preview */}
-      <section aria-labelledby="mess-menu-title" className="rounded-3xl border border-amber-200/80 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white p-5 shadow-xs">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-xs text-lg">
-              🍽
-            </span>
-            <div>
-              <h2 id="mess-menu-title" className="text-lg font-bold leading-tight text-slate-900">
-                {t('student.mess.title')}
-              </h2>
-              <p className="text-xs font-medium text-slate-500">
-                {todayMenu?.dayOfWeek ? `${todayMenu.dayOfWeek} • Live Dining Schedule` : 'Daily Dining Schedule'}
-              </p>
-            </div>
-          </div>
-          <Link
-            to="/mess"
-            className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 hover:text-amber-800 transition"
-          >
-            <span>{t('student.seeAll')}</span>
-            <Icon name="chevronRight" className="h-4 w-4" strokeWidth={2.5} />
-          </Link>
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          {['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'].map((meal) => {
-            const mealData = todayMenu?.meals?.[meal];
-            const items = mealData?.menuItems?.slice(0, 2).map((it) => it.name).join(', ');
-            return (
-              <div
-                key={meal}
-                className="rounded-2xl border border-amber-100 bg-white/90 p-3 shadow-2xs transition hover:border-amber-300"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
-                    {meal.charAt(0) + meal.slice(1).toLowerCase()}
-                  </span>
-                  <span className={`h-1.5 w-1.5 rounded-full ${mealData?.isPublished ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                </div>
-                <p className="mt-1 text-xs font-semibold text-slate-700 line-clamp-2">
-                  {items || (mealData?.isPublished ? 'Special Menu' : 'Scheduled')}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="mt-3.5 flex justify-end">
-          <Link
-            to="/mess"
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-amber-600 px-4 text-xs font-bold text-white shadow-2xs transition active:scale-95 hover:bg-amber-700"
-          >
-            <span>{t('student.mess.view')}</span>
-            <Icon name="chevronRight" className="h-4 w-4" strokeWidth={2.5} />
-          </Link>
-        </div>
-      </section>
-
-      {/* Room Virtual Visit & 360° Tour Preview */}
-      <section aria-labelledby="virtual-tour-title" className="relative overflow-hidden rounded-3xl border border-indigo-200/90 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-5 text-white shadow-md">
-        <span className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-indigo-500/20 blur-2xl" />
-        <span className="absolute -left-12 -bottom-12 h-44 w-44 rounded-full bg-brand-500/15 blur-2xl" />
-
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5 max-w-sm">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-200 backdrop-blur-md border border-indigo-400/30">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>360° Interactive Experience</span>
-            </div>
-            <h2 id="virtual-tour-title" className="text-lg font-bold text-white">
-              {t('virtualVisit.cardTitle')}
-            </h2>
-            <p className="text-xs text-indigo-100/80 leading-relaxed">
-              {t('virtualVisit.cardDesc')}
-            </p>
-          </div>
-
-          <div className="shrink-0 flex items-center gap-2">
-            <Link
-              to="/virtual-visit"
-              className="inline-flex h-11 items-center gap-2 rounded-2xl bg-white px-5 text-xs font-bold text-indigo-950 shadow-md transition active:scale-95 hover:bg-indigo-50"
-            >
-              <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              <span>{t('virtualVisit.exploreCta')}</span>
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -248,6 +160,36 @@ export default function StudentHomePage() {
           </div>
         </section>
       )}
+
+      <section aria-labelledby="more-title">
+        <h2 id="more-title" className="text-xl font-bold text-slate-900">
+          {t('home.more')}
+        </h2>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <Link
+            to="/mess"
+            className="flex flex-col gap-3 rounded-3xl bg-white p-4 shadow-[0_4px_14px_-4px_rgba(15,23,42,0.18)] ring-1 ring-black/5 transition active:scale-[0.99]"
+          >
+            <CategoryArt category="MESS" shape="square" size="h-12 w-12" iconSize="h-6 w-6" />
+            <span className="min-w-0">
+              <span className="block text-base font-bold leading-snug text-slate-900">{t('student.mess.title')}</span>
+              <span className="mt-1 line-clamp-2 block text-sm text-slate-500">{messLine}</span>
+            </span>
+          </Link>
+          <Link
+            to="/virtual-visit"
+            className="flex flex-col gap-3 rounded-3xl bg-white p-4 shadow-[0_4px_14px_-4px_rgba(15,23,42,0.18)] ring-1 ring-black/5 transition active:scale-[0.99]"
+          >
+            <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-violet-400 to-purple-600 text-white shadow-[0_6px_14px_-6px_rgba(15,23,42,0.45)] ring-2 ring-white">
+              <Icon name="door" className="h-6 w-6" strokeWidth={1.9} />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-base font-bold leading-snug text-slate-900">{t('virtualVisit.cardTitle')}</span>
+              <span className="mt-1 line-clamp-2 block text-sm text-slate-500">{t('home.vv.sub')}</span>
+            </span>
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }

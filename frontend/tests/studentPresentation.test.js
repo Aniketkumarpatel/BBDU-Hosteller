@@ -162,3 +162,39 @@ test('"fix by" shows only the time today and the day and time otherwise', async 
   assert.equal(formatLeft(en, 120), '2 hr');
   assert.equal(formatLeft(en, 20), '20 min');
 });
+
+test('pickMeal chooses the meal that fits the hour when it has published dishes', async () => {
+  const { pickMeal } = await import('../src/utils/studentPresentation.js');
+  const menu = {
+    meals: {
+      BREAKFAST: { isPublished: true, menuItems: [{ name: 'Poha' }, { name: 'Tea' }] },
+      LUNCH: { isPublished: true, menuItems: [{ name: 'Dal' }, { name: 'Rice' }] },
+      DINNER: { isPublished: true, menuItems: [{ name: 'Roti' }] },
+    },
+  };
+  assert.deepEqual(pickMeal(menu, 8), { meal: 'BREAKFAST', items: ['Poha', 'Tea'] });
+  assert.deepEqual(pickMeal(menu, 12), { meal: 'LUNCH', items: ['Dal', 'Rice'] });
+  assert.deepEqual(pickMeal(menu, 20), { meal: 'DINNER', items: ['Roti'] });
+});
+
+test('pickMeal moves on to the next published meal and ignores unpublished or empty ones', async () => {
+  const { pickMeal } = await import('../src/utils/studentPresentation.js');
+  const menu = {
+    meals: {
+      BREAKFAST: { isPublished: false, menuItems: [{ name: 'Hidden' }] },
+      LUNCH: { isPublished: true, menuItems: [] },
+      SNACKS: { isPublished: true, menuItems: [{ name: '  ' }, { name: 'Samosa' }] },
+    },
+  };
+  // 12 o'clock: lunch has no dishes, so the next meal with dishes is the snack
+  assert.deepEqual(pickMeal(menu, 12), { meal: 'SNACKS', items: ['Samosa'] });
+  // evening with only a morning meal published still wraps around to find something
+  assert.deepEqual(pickMeal({ meals: { BREAKFAST: { isPublished: true, menuItems: [{ name: 'Poha' }] } } }, 21), { meal: 'BREAKFAST', items: ['Poha'] });
+});
+
+test('pickMeal returns null when nothing is published or there is no menu', async () => {
+  const { pickMeal } = await import('../src/utils/studentPresentation.js');
+  assert.equal(pickMeal(null, 12), null);
+  assert.equal(pickMeal({}, 12), null);
+  assert.equal(pickMeal({ meals: { LUNCH: { isPublished: false, menuItems: [{ name: 'Dal' }] } } }, 12), null);
+});

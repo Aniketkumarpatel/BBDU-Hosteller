@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useLanguage } from '../../i18n/LanguageContext.jsx';
 import complaintService from '../../services/complaintService.js';
@@ -157,29 +156,6 @@ export default function WardenProblemsPage() {
         {!loading && !errorKey && (
           <p className={`mt-1 text-lg font-medium ${attention > 0 ? 'text-orange-700' : 'text-slate-700'}`}>{summary}</p>
         )}
-      </section>
-
-      {/* Room Virtual Visit - Warden Photo & Video Upload Banner */}
-      <section className="relative overflow-hidden rounded-3xl border-2 border-purple-300 bg-gradient-to-r from-indigo-950 via-purple-950 to-slate-900 p-5 text-white shadow-lg">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-500/30 text-sm">📸</span>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Room Virtual Visit Media Studio</span>
-            </div>
-            <h2 className="text-base sm:text-lg font-black tracking-tight text-white">Upload Room Photos &amp; Video Tour</h2>
-            <p className="text-xs text-purple-200/80 max-w-lg leading-relaxed">
-              Upload official room photographs (up to 6) and short walkthrough videos (up to 2, ~15s) for Room 101, 202, and 303.
-            </p>
-          </div>
-          <Link
-            to="/virtual-visit"
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 px-5 py-2.5 text-xs font-black text-white shadow-md shadow-purple-500/30 transition hover:brightness-110 active:scale-95"
-          >
-            <span>📤 Upload Room Media Now</span>
-            <span>&rarr;</span>
-          </Link>
-        </div>
       </section>
 
       {toast && (

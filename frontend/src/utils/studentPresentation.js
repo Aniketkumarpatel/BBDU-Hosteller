@@ -125,3 +125,37 @@ export const buildReportPayload = ({ category, issueType, text = '', priority = 
   const description = own ? `${title}. ${own}` : `${title} in my room.`;
   return { title, description, category, issueType, priority };
 };
+
+export const MEAL_ORDER = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'];
+
+// The meal a student most likely wants to know about at this hour of the day
+const mealForHour = (hour) => {
+  if (hour < 10) return 'BREAKFAST';
+  if (hour < 15) return 'LUNCH';
+  if (hour < 18) return 'SNACKS';
+  return 'DINNER';
+};
+
+/**
+ * Picks one published meal of today's menu to preview on the student home: the meal that fits
+ * the hour if it has dishes, otherwise the next one that does, otherwise any that does.
+ * Returns null when nothing is published, so the card can say so instead of showing blanks.
+ *
+ * @param {{ meals?: Record<string, { isPublished?: boolean, menuItems?: Array<{ name?: string }> }> } | null} menu
+ * @param {number} hour 0 to 23
+ * @returns {{ meal: string, items: string[] } | null}
+ */
+export const pickMeal = (menu, hour) => {
+  const dishes = (meal) => {
+    const data = menu?.meals?.[meal];
+    if (!data?.isPublished) return [];
+    return (data.menuItems || []).map((item) => String(item?.name || '').trim()).filter(Boolean);
+  };
+  const start = MEAL_ORDER.indexOf(mealForHour(hour));
+  for (let i = 0; i < MEAL_ORDER.length; i += 1) {
+    const meal = MEAL_ORDER[(start + i) % MEAL_ORDER.length];
+    const items = dishes(meal);
+    if (items.length > 0) return { meal, items };
+  }
+  return null;
+};

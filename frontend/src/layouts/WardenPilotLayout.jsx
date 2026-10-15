@@ -1,13 +1,19 @@
+import { useLocation } from 'react-router-dom';
 import PilotShell from './PilotShell.jsx';
 
 const TABS = [
   { to: '/warden/problems', labelKey: 'nav.problems' },
   { to: '/warden/people', labelKey: 'nav.people' },
-  { to: '/virtual-visit', labelKey: 'nav.virtualVisit' },
-  { to: '/mess', labelKey: 'nav.mess' },
+  { to: '/virtual-visit', labelKey: 'nav.rooms' },
+  { to: '/mess', labelKey: 'tab.mess' },
 ];
 
-/** Warden shell (DEC-029): two destinations, Problems and People, as simple tabs. */
+// Mess and Rooms are wide, table-like pages: they get more room than the problem list
+const WIDE_PATHS = ['/mess', '/virtual-visit'];
+
+/** Warden shell (DEC-029): Problems and People, plus Rooms (virtual visit media) and Mess, as simple tabs. */
 export default function WardenPilotLayout() {
-  return <PilotShell homePath="/warden/problems" tabs={TABS} width="max-w-3xl" />;
+  const { pathname } = useLocation();
+  const wide = WIDE_PATHS.some((path) => pathname.startsWith(path));
+  return <PilotShell homePath="/warden/problems" tabs={TABS} width={wide ? 'max-w-6xl' : 'max-w-3xl'} />;
 }

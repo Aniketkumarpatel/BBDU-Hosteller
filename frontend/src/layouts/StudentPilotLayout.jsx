@@ -36,10 +36,12 @@ export default function StudentPilotLayout() {
   const block = profile?.blockId?.name || '';
   const hostel = profile?.hostelId?.name || '';
   const fullScreen = pathname.startsWith('/student/report');
+  // Mess and Virtual Visit are wide, gallery-style pages; the rest is a narrow phone column
+  const wide = pathname.startsWith('/mess') || pathname.startsWith('/virtual-visit');
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <div className="mx-auto min-h-screen max-w-xl bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.04)]">
+      <div className={`mx-auto min-h-screen bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.04)] ${wide ? 'max-w-5xl' : 'max-w-xl'}`}>
         {!fullScreen && (
           <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-slate-100 bg-white/95 px-4 py-2.5 backdrop-blur-xs">
             <Link to="/student/home" aria-label={t('student.yourRoom')} className="flex min-w-0 items-center gap-2">
@@ -55,7 +57,7 @@ export default function StudentPilotLayout() {
           </header>
         )}
 
-        <main className={fullScreen ? 'pb-6' : 'pb-24'}>
+        <main className={fullScreen ? 'pb-6' : wide ? 'px-4 pb-24 pt-4' : 'pb-24'}>
           <Outlet context={{ profile, unread, refreshUnread, setUnread }} />
         </main>
       </div>

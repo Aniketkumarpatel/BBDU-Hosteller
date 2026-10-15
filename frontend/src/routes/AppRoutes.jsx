@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
 import PublicLayout from '../layouts/PublicLayout.jsx';
-import DashboardLayout from '../layouts/DashboardLayout.jsx';
+import DashboardLayout, { DashboardLayoutContext } from '../layouts/DashboardLayout.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import LandingPage from '../pages/LandingPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
@@ -106,6 +107,20 @@ function ForwardToProblem() {
   return <Navigate to={`/warden/problems/${id}`} replace />;
 }
 
+// Pages that serve several roles (Mess, Virtual Visit) keep one address but open inside the shell
+// of the role that is looking at them: students get the bottom tabs, wardens the warden tabs,
+// everyone else the dashboard. The context tells those old pages not to add a second header.
+function RoleAwareLayout() {
+  const { user } = useAuth();
+  const PilotLayout = IS_PILOT_MODE ? { STUDENT: StudentPilotLayout, WARDEN: WardenPilotLayout }[user?.role] : null;
+  if (!PilotLayout) return <DashboardLayout />;
+  return (
+    <DashboardLayoutContext.Provider value={true}>
+      <PilotLayout />
+    </DashboardLayoutContext.Provider>
+  );
+}
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -156,6 +171,14 @@ export default function AppRoutes() {
             </Route>
           </Route>
         )}
+
+        {/* Mess (Step 10) and Room Virtual Visit: shared by several roles, shown in the viewer's own shell */}
+        <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+          <Route element={<RoleAwareLayout />}>
+            <Route path="/mess" element={<MessDashboardPage />} />
+            <Route path="/virtual-visit" element={<VirtualVisitPage />} />
+          </Route>
+        </Route>
 
         {/* Persistent Dashboard Layout for Non-Admin Routes */}
         <Route element={<DashboardLayout />}>
@@ -245,11 +268,6 @@ export default function AppRoutes() {
             <Route path="/maintenance/plans/:id" element={<MaintenancePlanDetailPage />} />
           </Route>
 
-          {/* Mess & Food Quality Management (Step 10) */}
-          <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-            <Route path="/mess" element={<MessDashboardPage />} />
-          </Route>
-
           {/* Cleaning & Housekeeping Management (Step 11) */}
           <Route element={<RoleProtectedRoute allowedRoles={['HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
             <Route path="/cleaning" element={<CleaningDashboardPage />} />
@@ -278,11 +296,6 @@ export default function AppRoutes() {
             <Route path="/student-services" element={<StudentServicesDashboardPage />} />
             <Route path="/student-services/requests/:id" element={<ServiceRequestDetailPage />} />
             <Route path="/notices" element={<Navigate to="/student-services" replace />} />
-          </Route>
-
-          {/* Room Virtual Visit & 360° Panoramic Tour (Read-Only) */}
-          <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
-            <Route path="/virtual-visit" element={<VirtualVisitPage />} />
           </Route>
         </Route>
 
