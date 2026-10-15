@@ -20,6 +20,7 @@ import outpassRoutes from './outpass.routes.js';
 import aiCommandCenterRoutes from './aiCommandCenter.routes.js';
 import financeRoutes from './finance.routes.js';
 import studentServicesRoutes from './studentServices.routes.js';
+import virtualVisitRoutes from './virtualVisit.routes.js';
 
 const router = Router();
 
@@ -64,6 +65,9 @@ router.use('/finance', financeRoutes);
 
 // Student Services & Digital Communication (Step 16)
 router.use('/student-services', studentServicesRoutes);
+
+// Room Virtual Visit & 360 Exploration (Read-Only)
+router.use('/virtual-visit', virtualVisitRoutes);
 
 // Complaints operations
 router.use('/complaints', complaintRoutes);

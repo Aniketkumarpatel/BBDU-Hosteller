@@ -69,6 +69,27 @@ const roomSchema = new mongoose.Schema(
       ],
     },
     isActive: { type: Boolean, default: true },
+    photos: {
+      type: [{ type: String, trim: true }],
+      validate: {
+        validator: (v) => !Array.isArray(v) || v.length <= 6,
+        message: 'A maximum of 6 room photos can be uploaded',
+      },
+      default: [],
+    },
+    videos: {
+      type: [{ type: String, trim: true }],
+      validate: {
+        validator: (v) => !Array.isArray(v) || v.length <= 2,
+        message: 'A maximum of 2 short videos can be uploaded',
+      },
+      default: [],
+    },
+    panorama360: { type: String, trim: true },
+    facilities: [{ type: String, trim: true }],
+    description: { type: String, trim: true, maxlength: 1000 },
+    isVirtualVisitRoom: { type: Boolean, default: false, index: true },
+    isAc: { type: Boolean, default: false },
   },
   buildSchemaOptions()
 );

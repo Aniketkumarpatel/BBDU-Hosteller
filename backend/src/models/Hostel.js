@@ -20,6 +20,8 @@ const hostelSchema = new mongoose.Schema(
     },
     address: { type: String, trim: true, maxlength: 300 },
     description: { type: String, trim: true, maxlength: 1000 },
+    photos: [{ type: String, trim: true }],
+    facilities: [{ type: String, trim: true }],
     isActive: { type: Boolean, default: true },
   },
   buildSchemaOptions()

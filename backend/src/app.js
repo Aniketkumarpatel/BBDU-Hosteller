@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __appDirname = path.dirname(fileURLToPath(import.meta.url));
 
 import env from './config/env.js';
 import apiRoutes from './routes/index.js';
@@ -52,6 +55,7 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(mongoSanitize);
 
 // Static file uploads
+app.use('/uploads', express.static(path.resolve(__appDirname, '../uploads')));
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // API routes
