@@ -211,15 +211,15 @@ export default function VirtualVisitPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <div className="flex items-center gap-2.5">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white shadow-md text-xl">
+                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white shadow-md text-xl">
                   🏛️
                 </span>
                 <div>
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                    BBDU Hostel Room Virtual Visit
+                    {t('virtualVisit.title')}
                   </h1>
                   <p className="text-xs sm:text-sm font-medium text-slate-500">
-                    Explore Senior &amp; Junior Blocks in 360° with 4 facility images, 15s walkthrough videos, and live occupancy.
+                    {t('virtualVisit.subtitle')}
                   </p>
                 </div>
               </div>
@@ -228,7 +228,7 @@ export default function VirtualVisitPage() {
             {/* Strict Read-Only Badge */}
             <div className="inline-flex items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50/90 px-4 py-2 text-xs font-bold text-amber-900 shadow-2xs">
               <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-              <span>Strictly Read-Only • No Booking / Reservations Allowed</span>
+              <span>{t('virtualVisit.readOnlyNotice')}</span>
             </div>
           </div>
         </div>
@@ -238,18 +238,18 @@ export default function VirtualVisitPage() {
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 space-y-6">
         {/* WARDEN MEDIA MANAGEMENT STUDIO BANNER */}
         {canManage && (
-          <section className="relative overflow-hidden rounded-3xl border-2 border-purple-300 bg-gradient-to-r from-indigo-950 via-purple-950 to-slate-950 p-6 text-white shadow-xl">
-            <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-purple-500/10 blur-2xl pointer-events-none" />
+          <section className="relative overflow-hidden rounded-3xl border-2 border-brand-300 bg-gradient-to-r from-brand-800 via-brand-800 to-slate-950 p-6 text-white shadow-xl">
+            <div className="absolute top-0 right-0 -mt-10 -mr-10 h-40 w-40 rounded-full bg-brand-500/10 blur-2xl pointer-events-none" />
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 relative z-10">
               <div className="space-y-1.5">
-                <div className="inline-flex items-center gap-2 rounded-full bg-purple-500/20 border border-purple-400/40 px-3 py-1 text-xs font-bold text-purple-200">
+                <div className="inline-flex items-center gap-2 rounded-full bg-brand-500/20 border border-brand-400/40 px-3 py-1 text-xs font-bold text-brand-200">
                   <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
                   <span>👑 Warden Media Management Studio Active</span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
                   Hostel Room Media &amp; Walkthrough Studio
                 </h2>
-                <p className="text-xs sm:text-sm text-purple-200/90 max-w-2xl leading-relaxed">
+                <p className="text-xs sm:text-sm text-brand-200/90 max-w-2xl leading-relaxed">
                   As Warden, you can upload real photographs (up to 6 per room) and short video tours (up to 2 per room, ~15s). Students have strictly read-only access.
                 </p>
               </div>
@@ -264,7 +264,7 @@ export default function VirtualVisitPage() {
                       setActiveDetailRoom(rm);
                       setModalInitialTab('upload');
                     }}
-                    className="flex items-center gap-1.5 rounded-2xl border border-purple-400/40 bg-purple-900/50 hover:bg-purple-800/80 px-3.5 py-2 text-xs font-black text-white shadow-sm transition active:scale-95"
+                    className="flex items-center gap-1.5 rounded-2xl border border-brand-400/40 bg-brand-800/50 hover:bg-brand-800/80 px-3.5 py-2 text-xs font-black text-white shadow-sm transition active:scale-95"
                   >
                     <span>📤</span>
                     <span>Upload Media ({rm.roomType})</span>
@@ -278,15 +278,15 @@ export default function VirtualVisitPage() {
         {/* COMPREHENSIVE FILTER BAR (HIGHLIGHTED) */}
         <section
           aria-label="Room Filters"
-          className="relative overflow-hidden rounded-3xl border-2 border-indigo-400/90 bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/60 p-6 shadow-xl shadow-indigo-100/70 ring-4 ring-indigo-500/10 space-y-5 transition duration-300"
+          className="relative overflow-hidden rounded-3xl border-2 border-brand-400/90 bg-gradient-to-br from-brand-50/80 via-white to-brand-100/60 p-6 shadow-xl shadow-brand-100/70 ring-4 ring-brand-500/10 space-y-5 transition duration-300"
         >
           {/* Radiant top accent bar */}
-          <div className="absolute top-0 left-6 right-6 h-1.5 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-sm" />
+          <div className="absolute top-0 left-6 right-6 h-1.5 rounded-full bg-gradient-to-r from-brand-500 via-brand-500 to-pink-500 shadow-sm" />
 
           {/* Header Row */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-indigo-100/80">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-brand-100/80">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 text-white shadow-md text-base">
+              <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-600 to-brand-700 text-white shadow-md text-base">
                 🎯
               </span>
               <div>
@@ -294,7 +294,7 @@ export default function VirtualVisitPage() {
                   <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
                     Search &amp; Filter Virtual Visit Rooms
                   </h2>
-                  <span className="rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 px-3 py-0.5 text-xs font-black text-white shadow-xs">
+                  <span className="rounded-full bg-gradient-to-r from-brand-600 to-brand-700 px-3 py-0.5 text-xs font-black text-white shadow-xs">
                     {filteredRooms.length} of {data.rooms.length} Rooms
                   </span>
                 </div>
@@ -311,9 +311,9 @@ export default function VirtualVisitPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search room 101, 202, block..."
-                className="w-full rounded-2xl border-2 border-indigo-100 bg-white/95 pl-9 pr-3 py-2 text-xs font-bold text-slate-800 placeholder-slate-400 shadow-2xs focus:border-indigo-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-100 transition"
+                className="w-full rounded-2xl border-2 border-brand-100 bg-white/95 pl-9 pr-3 py-2 text-xs font-bold text-slate-800 placeholder-slate-400 shadow-2xs focus:border-brand-600 focus:bg-white focus:outline-none focus:ring-4 focus:ring-brand-100 transition"
               />
-              <span className="absolute left-3 top-2.5 text-indigo-500 text-xs">🔍</span>
+              <span className="absolute left-3 top-2.5 text-brand-500 text-xs">🔍</span>
             </div>
           </div>
 
@@ -321,14 +321,14 @@ export default function VirtualVisitPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
             {/* 1. HOSTEL FILTER */}
             <div>
-              <label className="block text-[11px] font-black text-indigo-950 mb-1.5 flex items-center gap-1">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black">1</span>
+              <label className="block text-[11px] font-black text-brand-800 mb-1.5 flex items-center gap-1">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-[10px] font-black">1</span>
                 Hostel
               </label>
               <select
                 value={selectedHostel}
                 onChange={(e) => setSelectedHostel(e.target.value)}
-                className="w-full rounded-2xl border-2 border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs hover:border-indigo-300 focus:border-indigo-600 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition"
+                className="w-full rounded-2xl border-2 border-brand-100 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs hover:border-brand-300 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100 transition"
               >
                 <option value="all">All Hostels</option>
                 {data.hostels.map((h) => (
@@ -341,8 +341,8 @@ export default function VirtualVisitPage() {
 
             {/* 2. BLOCK FILTER (C & D = Juniors, A & B = Seniors) */}
             <div>
-              <label className="block text-[11px] font-black text-indigo-950 mb-1.5 flex items-center gap-1">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black">2</span>
+              <label className="block text-[11px] font-black text-brand-800 mb-1.5 flex items-center gap-1">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-[10px] font-black">2</span>
                 Block
               </label>
               <select
@@ -351,7 +351,7 @@ export default function VirtualVisitPage() {
                   setSelectedBlock(e.target.value);
                   setSelectedBlockCategory('all');
                 }}
-                className="w-full rounded-2xl border-2 border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs hover:border-indigo-300 focus:border-indigo-600 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition"
+                className="w-full rounded-2xl border-2 border-brand-100 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs hover:border-brand-300 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100 transition"
               >
                 <option value="all">All Blocks</option>
                 <option value="BLOCK-A">Block A (Seniors)</option>
@@ -363,14 +363,14 @@ export default function VirtualVisitPage() {
 
             {/* 3. FLOOR FILTER (Sirf 3 floors: Floor 1, 2, 3) */}
             <div>
-              <label className="block text-[11px] font-black text-indigo-950 mb-1.5 flex items-center gap-1">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black">3</span>
+              <label className="block text-[11px] font-black text-brand-800 mb-1.5 flex items-center gap-1">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-[10px] font-black">3</span>
                 Floor
               </label>
               <select
                 value={selectedFloor}
                 onChange={(e) => setSelectedFloor(e.target.value)}
-                className="w-full rounded-2xl border-2 border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs hover:border-indigo-300 focus:border-indigo-600 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition"
+                className="w-full rounded-2xl border-2 border-brand-100 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs hover:border-brand-300 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100 transition"
               >
                 <option value="all">All Floors</option>
                 <option value="1">Floor 1</option>
@@ -381,14 +381,14 @@ export default function VirtualVisitPage() {
 
             {/* 4. ROOM TYPE FILTER (Single, Double, Triple) */}
             <div>
-              <label className="block text-[11px] font-black text-indigo-950 mb-1.5 flex items-center gap-1">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black">4</span>
+              <label className="block text-[11px] font-black text-brand-800 mb-1.5 flex items-center gap-1">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-[10px] font-black">4</span>
                 Room Sharing Type
               </label>
               <select
                 value={selectedRoomType}
                 onChange={(e) => setSelectedRoomType(e.target.value)}
-                className="w-full rounded-2xl border-2 border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs hover:border-indigo-300 focus:border-indigo-600 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition"
+                className="w-full rounded-2xl border-2 border-brand-100 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs hover:border-brand-300 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100 transition"
               >
                 <option value="all">All Sharing Types</option>
                 <option value="SINGLE">Single Sharing</option>
@@ -399,14 +399,14 @@ export default function VirtualVisitPage() {
 
             {/* 4b. AC / NON-AC FILTER */}
             <div>
-              <label className="block text-[11px] font-black text-indigo-950 mb-1.5 flex items-center gap-1">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black">❄️</span>
+              <label className="block text-[11px] font-black text-brand-800 mb-1.5 flex items-center gap-1">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-[10px] font-black">❄️</span>
                 AC / Non-AC
               </label>
               <select
                 value={selectedCooling}
                 onChange={(e) => setSelectedCooling(e.target.value)}
-                className="w-full rounded-2xl border-2 border-indigo-100 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs hover:border-indigo-300 focus:border-indigo-600 focus:outline-none focus:ring-4 focus:ring-indigo-100 transition"
+                className="w-full rounded-2xl border-2 border-brand-100 bg-white px-3 py-2 text-xs font-bold text-slate-800 shadow-xs hover:border-brand-300 focus:border-brand-600 focus:outline-none focus:ring-4 focus:ring-brand-100 transition"
               >
                 <option value="all">All (AC &amp; Non-AC)</option>
                 <option value="AC">AC (Air Conditioned)</option>
@@ -416,7 +416,7 @@ export default function VirtualVisitPage() {
           </div>
 
           {/* Quick Category Buttons for Seniors / Juniors */}
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-indigo-100/70">
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-brand-100/70">
             <span className="text-xs font-black text-slate-700">Block Wing:</span>
             <button
               type="button"
@@ -440,8 +440,8 @@ export default function VirtualVisitPage() {
               }}
               className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition ${
                 selectedBlockCategory === 'SENIORS'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200 ring-2 ring-indigo-300'
-                  : 'bg-indigo-50/80 border border-indigo-200 text-indigo-800 hover:bg-indigo-100'
+                  ? 'bg-brand-600 text-white shadow-md shadow-brand-200 ring-2 ring-brand-300'
+                  : 'bg-brand-50/80 border border-brand-200 text-brand-800 hover:bg-brand-100'
               }`}
             >
               Seniors (Block A &amp; B)
@@ -454,8 +454,8 @@ export default function VirtualVisitPage() {
               }}
               className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition ${
                 selectedBlockCategory === 'JUNIORS'
-                  ? 'bg-purple-600 text-white shadow-md shadow-purple-200 ring-2 ring-purple-300'
-                  : 'bg-purple-50/80 border border-purple-200 text-purple-800 hover:bg-purple-100'
+                  ? 'bg-brand-600 text-white shadow-md shadow-brand-200 ring-2 ring-brand-300'
+                  : 'bg-brand-50/80 border border-brand-200 text-brand-800 hover:bg-brand-100'
               }`}
             >
               Juniors (Block C &amp; D)
@@ -463,10 +463,10 @@ export default function VirtualVisitPage() {
           </div>
 
           {/* 5. AVAILABILITY & FACILITIES FILTER CHIPS */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-indigo-100/70">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-brand-100/70">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-black text-slate-800 flex items-center gap-1">
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-black">5</span>
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-brand-100 text-brand-700 text-[10px] font-black">5</span>
                 Facility Filters:
               </span>
 
@@ -489,13 +489,13 @@ export default function VirtualVisitPage() {
                 onClick={() => setFilterChair((v) => !v)}
                 className={`flex items-center gap-1.5 rounded-2xl border-2 px-3 py-1.5 text-xs font-black transition shadow-xs ${
                   filterChair
-                    ? 'border-indigo-500 bg-indigo-50 text-indigo-900 ring-4 ring-indigo-100 shadow-indigo-100'
+                    ? 'border-brand-500 bg-brand-50 text-brand-800 ring-4 ring-brand-100 shadow-brand-100'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
                 <span>🪑</span>
                 <span>Chair</span>
-                {filterChair && <span className="text-indigo-700 font-black">✓</span>}
+                {filterChair && <span className="text-brand-700 font-black">✓</span>}
               </button>
 
               <button
@@ -503,13 +503,13 @@ export default function VirtualVisitPage() {
                 onClick={() => setFilterTable((v) => !v)}
                 className={`flex items-center gap-1.5 rounded-2xl border-2 px-3 py-1.5 text-xs font-black transition shadow-xs ${
                   filterTable
-                    ? 'border-purple-500 bg-purple-50 text-purple-900 ring-4 ring-purple-100 shadow-purple-100'
+                    ? 'border-brand-500 bg-brand-50 text-brand-800 ring-4 ring-brand-100 shadow-brand-100'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
                 <span>📑</span>
                 <span>Table</span>
-                {filterTable && <span className="text-purple-700 font-black">✓</span>}
+                {filterTable && <span className="text-brand-700 font-black">✓</span>}
               </button>
 
               <button
@@ -570,7 +570,7 @@ export default function VirtualVisitPage() {
               <button
                 type="button"
                 onClick={resetAllFilters}
-                className="mt-4 rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-indigo-700"
+                className="mt-4 rounded-xl bg-brand-600 px-5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-brand-700"
               >
                 Reset All Filters
               </button>
@@ -585,7 +585,7 @@ export default function VirtualVisitPage() {
                 return (
                   <article
                     key={room._id}
-                    className="group flex flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm transition hover:shadow-md hover:border-indigo-200"
+                    className="group flex flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-sm transition hover:shadow-md hover:border-brand-200"
                   >
                     {/* Media Header (Photos & Video) */}
                     <div className="relative aspect-video w-full overflow-hidden bg-slate-900 flex items-center justify-center">
@@ -639,7 +639,7 @@ export default function VirtualVisitPage() {
                           📷 {photos.length} {photos.length === 1 ? 'Photograph' : 'Photographs'}
                         </span>
                         {videos.length > 0 && (
-                          <span className="rounded-lg bg-indigo-900/80 px-2 py-0.5 text-[10px] font-bold text-indigo-200 backdrop-blur-md">
+                          <span className="rounded-lg bg-brand-800/80 px-2 py-0.5 text-[10px] font-bold text-brand-200 backdrop-blur-md">
                             🎬 ~15s Walkthrough
                           </span>
                         )}
@@ -653,7 +653,7 @@ export default function VirtualVisitPage() {
                           <h3 className="text-lg font-black text-slate-900">
                             Room
                           </h3>
-                          <p className="text-xs font-semibold text-indigo-700">
+                          <p className="text-xs font-semibold text-brand-700">
                             {room.blockId?.name || 'Block'} • {room.floorId?.name || (Number.isInteger(room.floorId?.floorNumber) ? `Floor ${room.floorId?.floorNumber}` : 'Floor')}
                           </p>
                           <p className="text-[11px] text-slate-500">
@@ -679,13 +679,13 @@ export default function VirtualVisitPage() {
                           <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200/60">
                             🛏️ Available Bed ({room.availableBeds})
                           </span>
-                          <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60">
+                          <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700 border border-brand-200/60">
                             🪑 Chair
                           </span>
-                          <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60">
+                          <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700 border border-brand-200/60">
                             📑 Table
                           </span>
-                          <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700 border border-indigo-200/60">
+                          <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700 border border-brand-200/60">
                             🚪 Almirah
                           </span>
                           {room.isAc && (
@@ -715,7 +715,7 @@ export default function VirtualVisitPage() {
                             setActiveDetailRoom(room);
                             setModalInitialTab('videos');
                           }}
-                          className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700 active:scale-95 text-center"
+                          className="flex-1 rounded-xl bg-brand-600 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-700 active:scale-95 text-center"
                         >
                           🎬 ~15s Video
                         </button>
@@ -723,14 +723,14 @@ export default function VirtualVisitPage() {
 
                       {/* Warden Only Upload Action Button */}
                       {canManage && (
-                        <div className="mt-3 pt-3 border-t border-purple-100">
+                        <div className="mt-3 pt-3 border-t border-brand-100">
                           <button
                             type="button"
                             onClick={() => {
                               setActiveDetailRoom(room);
                               setModalInitialTab('upload');
                             }}
-                            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-700 via-indigo-600 to-indigo-700 py-2.5 px-4 text-xs font-black text-white shadow-md shadow-purple-200 transition hover:brightness-110 active:scale-95"
+                            className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-700 via-brand-600 to-brand-700 py-2.5 px-4 text-xs font-black text-white shadow-md shadow-brand-200 transition hover:brightness-110 active:scale-95"
                           >
                             <span>📤</span>
                             <span>Upload Room Photos &amp; Video (Warden)</span>

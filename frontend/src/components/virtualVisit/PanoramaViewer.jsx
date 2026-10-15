@@ -310,7 +310,7 @@ export default function PanoramaViewer({ src, title = '360° Room Virtual Tour',
         {/* Top Header Bar */}
         <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/90 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-400">
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-brand-500/20 text-brand-400">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
               </svg>
@@ -356,7 +356,7 @@ export default function PanoramaViewer({ src, title = '360° Room Virtual Tour',
         >
           {loading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/80 text-white">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-400 border-t-transparent" />
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-400 border-t-transparent" />
               <p className="text-xs font-semibold text-slate-300">Loading 360° panoramic scene...</p>
             </div>
           )}
@@ -375,7 +375,7 @@ export default function PanoramaViewer({ src, title = '360° Room Virtual Tour',
 
           {/* Hint Overlay (fades out or stays subtle) */}
           <div className="pointer-events-none absolute bottom-4 left-4 z-20 flex items-center gap-2 rounded-2xl bg-slate-900/80 px-3.5 py-1.5 text-xs font-medium text-slate-200 backdrop-blur-md border border-slate-700/50">
-            <svg className="h-4 w-4 text-indigo-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="h-4 w-4 text-brand-400 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
             </svg>
             <span>Drag in any direction to look around 360°</span>
@@ -408,7 +408,7 @@ export default function PanoramaViewer({ src, title = '360° Room Virtual Tour',
               onClick={() => setIsRotating((r) => !r)}
               title={isRotating ? 'Pause auto-rotation' : 'Play auto-rotation'}
               className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${
-                isRotating ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                isRotating ? 'bg-brand-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
               }`}
             >
               {isRotating ? (

@@ -198,7 +198,7 @@ export default function WardenProblemPage() {
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
                     {t('problem.photo')}
                   </span>
-                  <span className="text-brand-600 font-bold">Open ↗</span>
+                  <span className="text-brand-600 font-bold">{t('problem.open')} ↗</span>
                 </div>
               </a>
             </div>

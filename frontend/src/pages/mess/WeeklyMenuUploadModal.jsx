@@ -200,8 +200,8 @@ export default function WeeklyMenuUploadModal({ isOpen, onClose, messId, onSched
           {/* STEP 1: Upload Dropzone (if not extracted yet) */}
           {!extractedData && !extracting && (
             <div className="space-y-4">
-              <div className="rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-8 text-center hover:bg-indigo-50/70 transition">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-600 text-2xl shadow-xs">
+              <div className="rounded-2xl border-2 border-dashed border-brand-200 bg-brand-50/40 p-8 text-center hover:bg-brand-50/70 transition">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-100 text-brand-600 text-2xl shadow-xs">
                   📷
                 </div>
                 <h3 className="mt-3 text-sm font-bold text-slate-900">
@@ -212,7 +212,7 @@ export default function WeeklyMenuUploadModal({ isOpen, onClose, messId, onSched
                 </p>
 
                 <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
-                  <label className="cursor-pointer rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition">
+                  <label className="cursor-pointer rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-brand-700 transition">
                     Browse File
                     <input
                       type="file"
@@ -228,11 +228,11 @@ export default function WeeklyMenuUploadModal({ isOpen, onClose, messId, onSched
                   )}
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-indigo-100/80 flex items-center justify-center">
+                <div className="mt-4 pt-3 border-t border-brand-100/80 flex items-center justify-center">
                   <button
                     type="button"
                     onClick={handleLoadOfficialPreset}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-white px-3.5 py-2 text-xs font-bold text-indigo-700 shadow-2xs hover:bg-indigo-50 transition"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-brand-200 bg-white px-3.5 py-2 text-xs font-bold text-brand-700 shadow-2xs hover:bg-brand-50 transition"
                   >
                     <span>📋</span> Load Official BBDU Hostel Timetable (w.e.f. 22.09.2026)
                   </button>
@@ -265,7 +265,7 @@ export default function WeeklyMenuUploadModal({ isOpen, onClose, messId, onSched
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-bold text-slate-800">
-                    Extracted from: <span className="font-mono text-indigo-700">{extractedData.fileName}</span>
+                    Extracted from: <span className="font-mono text-brand-700">{extractedData.fileName}</span>
                   </span>
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
@@ -289,7 +289,7 @@ export default function WeeklyMenuUploadModal({ isOpen, onClose, messId, onSched
                     setEditedSchedule(null);
                     setFile(null);
                   }}
-                  className="text-xs font-semibold text-indigo-600 hover:underline"
+                  className="text-xs font-semibold text-brand-600 hover:underline"
                 >
                   Upload Different Photo
                 </button>
@@ -311,7 +311,7 @@ export default function WeeklyMenuUploadModal({ isOpen, onClose, messId, onSched
                     onClick={() => setActiveDay(day)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-bold transition whitespace-nowrap ${
                       activeDay === day
-                        ? 'bg-indigo-600 text-white shadow-xs'
+                        ? 'bg-brand-600 text-white shadow-xs'
                         : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                     }`}
                   >
@@ -336,7 +336,7 @@ export default function WeeklyMenuUploadModal({ isOpen, onClose, messId, onSched
                         <button
                           type="button"
                           onClick={() => handleAddItem(activeDay, meal)}
-                          className="rounded bg-indigo-50 px-2 py-0.5 text-[11px] font-bold text-indigo-600 hover:bg-indigo-100"
+                          className="rounded bg-brand-50 px-2 py-0.5 text-[11px] font-bold text-brand-600 hover:bg-brand-100"
                         >
                           + Add Item
                         </button>
@@ -352,7 +352,7 @@ export default function WeeklyMenuUploadModal({ isOpen, onClose, messId, onSched
                                 onChange={(e) =>
                                   handleItemChange(activeDay, meal, idx, e.target.value)
                                 }
-                                className="flex-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                                className="flex-1 rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-800 focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
                               />
                               <button
                                 type="button"
@@ -391,7 +391,7 @@ export default function WeeklyMenuUploadModal({ isOpen, onClose, messId, onSched
             <button
               onClick={handleStartExtraction}
               disabled={!file || extracting}
-              className="rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 transition"
+              className="rounded-xl bg-brand-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-brand-700 disabled:opacity-50 transition"
             >
               {extracting ? 'Extracting...' : 'Extract Timetable with OCR →'}
             </button>

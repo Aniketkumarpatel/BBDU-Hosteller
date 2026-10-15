@@ -379,7 +379,7 @@ export default function MessDashboardPage() {
                   {currentMess?.code || 'ACTIVE'}
                 </span>
                 {currentMess?.hostelId?.name && (
-                  <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                  <span className="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
                     {currentMess.hostelId.name}
                   </span>
                 )}
@@ -391,7 +391,7 @@ export default function MessDashboardPage() {
 
             <div className="flex flex-wrap items-center gap-2.5">
               {isStudent ? (
-                <span className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50/70 px-3 py-1.5 text-xs font-bold text-indigo-800">
+                <span className="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50/70 px-3 py-1.5 text-xs font-bold text-brand-800">
                   <span>🏛</span> {currentMess?.name || 'Allocated Mess'}
                 </span>
               ) : (
@@ -399,7 +399,7 @@ export default function MessDashboardPage() {
                   <select
                     value={selectedMessId}
                     onChange={handleMessChange}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs focus:ring-2 focus:ring-indigo-500"
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs focus:ring-2 focus:ring-brand-500"
                   >
                     {messes.map((m) => (
                       <option key={m._id} value={m._id}>
@@ -418,7 +418,7 @@ export default function MessDashboardPage() {
                       setFeedbackMealDate(selectedDate);
                       setShowFeedbackModal(true);
                     }}
-                    className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700 flex items-center gap-1.5"
+                    className="rounded-lg bg-brand-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-brand-700 flex items-center gap-1.5"
                   >
                     <span>★</span> Rate Meal
                   </button>
@@ -452,7 +452,7 @@ export default function MessDashboardPage() {
                       });
                       setShowMenuModal(true);
                     }}
-                    className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-indigo-700"
+                    className="rounded-lg bg-brand-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-brand-700"
                   >
                     + Add Menu
                   </button>
@@ -532,26 +532,26 @@ export default function MessDashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 shadow-xs">
-              <p className="text-xs font-semibold uppercase text-indigo-700">Taste & Quality</p>
+            <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-4 shadow-xs">
+              <p className="text-xs font-semibold uppercase text-brand-700">Taste & Quality</p>
               <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-indigo-950">
+                <span className="text-2xl font-bold text-brand-800">
                   {stats.avgTaste ? `${stats.avgTaste}` : '—'}
                 </span>
-                <span className="text-xs text-indigo-500 font-bold">/ 5.0</span>
+                <span className="text-xs text-brand-500 font-bold">/ 5.0</span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
                 Portion size: {stats.avgQuantity ? `${stats.avgQuantity}/5` : '—'}
               </p>
             </div>
 
-            <div className="rounded-xl border border-purple-200 bg-purple-50/40 p-4 shadow-xs">
-              <p className="text-xs font-semibold uppercase text-purple-700">Mess Complaints</p>
+            <div className="rounded-xl border border-brand-200 bg-brand-50/40 p-4 shadow-xs">
+              <p className="text-xs font-semibold uppercase text-brand-700">Mess Complaints</p>
               <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-purple-950">
+                <span className="text-2xl font-bold text-brand-800">
                   {dashboardData?.complaints?.open || 0}
                 </span>
-                <span className="text-xs text-purple-600 font-semibold">Open issues</span>
+                <span className="text-xs text-brand-600 font-semibold">Open issues</span>
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
                 {dashboardData?.complaints?.resolved || 0} resolved this month
@@ -574,7 +574,7 @@ export default function MessDashboardPage() {
                   onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
                   className={`rounded-lg px-3 py-1 text-xs font-bold transition ${
                     selectedDate === new Date().toISOString().split('T')[0]
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-brand-600 text-white'
                       : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
                   }`}
                 >
@@ -594,9 +594,9 @@ export default function MessDashboardPage() {
                 type="date"
                 value={selectedDate}
                 onChange={(e) => handleDateChange(e.target.value)}
-                className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500"
+                className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-brand-500"
               />
-              <span className="rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-extrabold text-indigo-700 uppercase">
+              <span className="rounded-md bg-brand-50 px-2.5 py-1 text-xs font-extrabold text-brand-700 uppercase">
                 {activeDayOfWeek}
               </span>
             </div>
@@ -609,7 +609,7 @@ export default function MessDashboardPage() {
                 onClick={() => setActiveTab('today')}
                 className={`pb-3 border-b-2 transition ${
                   activeTab === 'today'
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? 'border-brand-600 text-brand-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -619,7 +619,7 @@ export default function MessDashboardPage() {
                 onClick={() => setActiveTab('weekly')}
                 className={`pb-3 border-b-2 transition ${
                   activeTab === 'weekly'
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? 'border-brand-600 text-brand-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -629,7 +629,7 @@ export default function MessDashboardPage() {
                 onClick={() => setActiveTab('feedbacks')}
                 className={`pb-3 border-b-2 transition ${
                   activeTab === 'feedbacks'
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? 'border-brand-600 text-brand-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -639,7 +639,7 @@ export default function MessDashboardPage() {
                 onClick={() => setActiveTab('analytics')}
                 className={`pb-3 border-b-2 transition ${
                   activeTab === 'analytics'
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? 'border-brand-600 text-brand-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -649,7 +649,7 @@ export default function MessDashboardPage() {
                 onClick={() => setActiveTab('notices')}
                 className={`pb-3 border-b-2 transition ${
                   activeTab === 'notices'
-                    ? 'border-indigo-600 text-indigo-600'
+                    ? 'border-brand-600 text-brand-600'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -664,7 +664,7 @@ export default function MessDashboardPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-slate-900">
-                    TODAY'S MESS MENU — <span className="text-indigo-600 font-extrabold">{selectedDate} ({activeDayOfWeek})</span>
+                    TODAY'S MESS MENU — <span className="text-brand-600 font-extrabold">{selectedDate} ({activeDayOfWeek})</span>
                   </h2>
                   {loadingDateMenu && (
                     <span className="text-[11px] font-medium text-slate-400 animate-pulse">Syncing…</span>
@@ -698,7 +698,7 @@ export default function MessDashboardPage() {
                   return (
                     <div
                       key={meal}
-                      className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-200 transition"
+                      className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-5 shadow-xs hover:border-brand-200 transition"
                     >
                       <div>
                         <div className="flex items-start justify-between border-b border-slate-100 pb-3">
@@ -721,7 +721,7 @@ export default function MessDashboardPage() {
                               {mealMenu?.isPublished ? 'Published' : rawMenu ? 'Draft (Hidden from students)' : 'Unscheduled'}
                             </span>
                             {mealMenu?.isScheduledOverride && (
-                              <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-extrabold text-indigo-700 border border-indigo-100">
+                              <span className="rounded bg-brand-50 px-1.5 py-0.5 text-[9px] font-extrabold text-brand-700 border border-brand-100">
                                 📅 Date Special
                               </span>
                             )}
@@ -764,7 +764,7 @@ export default function MessDashboardPage() {
                                 setFeedbackMealDate(selectedDate);
                                 setShowFeedbackModal(true);
                               }}
-                              className="w-full rounded-lg bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition flex items-center justify-center gap-1.5 shadow-2xs"
+                              className="w-full rounded-lg bg-brand-50 px-3 py-2 text-xs font-bold text-brand-700 hover:bg-brand-100 transition flex items-center justify-center gap-1.5 shadow-2xs"
                             >
                               <span>⭐</span> Rate {mealLabels[meal]}
                             </button>
@@ -807,7 +807,7 @@ export default function MessDashboardPage() {
                       });
                       setShowMenuModal(true);
                     }}
-                    className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700"
+                    className="rounded-lg bg-brand-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-brand-700"
                   >
                     + Add Menu
                   </button>
@@ -838,7 +838,7 @@ export default function MessDashboardPage() {
                           <td className="px-4 py-3 font-bold text-slate-800">
                             <div>{menu.dayOfWeek}</div>
                             {menu.date ? (
-                              <span className="inline-block mt-0.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">
+                              <span className="inline-block mt-0.5 rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700">
                                 📅 {menu.date}
                               </span>
                             ) : (
@@ -847,7 +847,7 @@ export default function MessDashboardPage() {
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 font-semibold text-indigo-700">{menu.mealType}</td>
+                          <td className="px-4 py-3 font-semibold text-brand-700">{menu.mealType}</td>
                           <td className="px-4 py-3 max-w-md">
                             <div className="flex flex-wrap gap-1.5">
                               {menu.menuItems?.map((it, idx) => (
@@ -934,7 +934,7 @@ export default function MessDashboardPage() {
                           <span className="font-bold text-xs text-slate-900">
                             {fb.studentId?.name || 'Resident Student'}
                           </span>
-                          <span className="rounded bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
+                          <span className="rounded bg-brand-50 px-2 py-0.5 text-[10px] font-bold text-brand-700">
                             {fb.mealType}
                           </span>
                           <span
@@ -1080,7 +1080,7 @@ export default function MessDashboardPage() {
                 {canManage && (
                   <button
                     onClick={() => setShowNoticeModal(true)}
-                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700"
+                    className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-brand-700"
                   >
                     + Post Notice
                   </button>
@@ -1125,7 +1125,7 @@ export default function MessDashboardPage() {
                             await messService.toggleNoticeActive(n._id, !n.isActive);
                             loadMessDetails(selectedMessId);
                           }}
-                          className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                          className="text-xs font-semibold text-brand-600 hover:text-brand-800"
                         >
                           {n.isActive ? 'Deactivate' : 'Activate'}
                         </button>
@@ -1285,7 +1285,7 @@ export default function MessDashboardPage() {
                 <button
                   type="submit"
                   disabled={submittingFeedback}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-700"
+                  className="rounded-lg bg-brand-600 px-4 py-2 font-bold text-white hover:bg-brand-700"
                 >
                   {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
                 </button>
@@ -1340,7 +1340,7 @@ export default function MessDashboardPage() {
                     }
                     className={`rounded-lg py-2 px-3 text-center text-xs font-bold border transition ${
                       menuForm.scheduleType === 'DATE'
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-2xs'
+                        ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-2xs'
                         : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
@@ -1356,7 +1356,7 @@ export default function MessDashboardPage() {
                     }
                     className={`rounded-lg py-2 px-3 text-center text-xs font-bold border transition ${
                       menuForm.scheduleType === 'WEEKLY'
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-2xs'
+                        ? 'border-brand-600 bg-brand-50 text-brand-700 shadow-2xs'
                         : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                     }`}
                   >
@@ -1386,7 +1386,7 @@ export default function MessDashboardPage() {
                   </div>
                   <div>
                     <label className="font-semibold text-slate-700">Day of Week</label>
-                    <div className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 p-2 font-bold text-indigo-700 uppercase">
+                    <div className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 p-2 font-bold text-brand-700 uppercase">
                       {getDayOfWeekFromDate(menuForm.date)}
                     </div>
                   </div>
@@ -1458,7 +1458,7 @@ export default function MessDashboardPage() {
                   type="button"
                   disabled={savingMenu}
                   onClick={(e) => handleSaveMenu(e, false)}
-                  className="rounded-lg border border-indigo-300 bg-indigo-50 px-3.5 py-2 font-bold text-indigo-700 hover:bg-indigo-100"
+                  className="rounded-lg border border-brand-300 bg-brand-50 px-3.5 py-2 font-bold text-brand-700 hover:bg-brand-100"
                 >
                   {savingMenu ? 'Saving...' : 'Save Draft'}
                 </button>
@@ -1466,7 +1466,7 @@ export default function MessDashboardPage() {
                   type="button"
                   disabled={savingMenu}
                   onClick={(e) => handleSaveMenu(e, true)}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-700"
+                  className="rounded-lg bg-brand-600 px-4 py-2 font-bold text-white hover:bg-brand-700"
                 >
                   {savingMenu ? 'Publishing...' : 'Publish Menu'}
                 </button>
@@ -1536,7 +1536,7 @@ export default function MessDashboardPage() {
                 <button
                   type="submit"
                   disabled={savingNotice}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-700"
+                  className="rounded-lg bg-brand-600 px-4 py-2 font-bold text-white hover:bg-brand-700"
                 >
                   {savingNotice ? 'Posting...' : 'Post Notice'}
                 </button>

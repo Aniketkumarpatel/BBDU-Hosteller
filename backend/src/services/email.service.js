@@ -84,11 +84,11 @@ export function buildOtpEmailHtml({ name, otp, role, expiresMinutes = 5 }) {
         <table role="presentation" width="100%" style="max-width: 580px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
           <!-- Header Banner -->
           <tr>
-            <td style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 32px 30px; text-align: center;">
+            <td style="background: linear-gradient(135deg, #e8364f 0%, #a32337 100%); padding: 32px 30px; text-align: center;">
               <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px;">
                 BBDU HOSTELLER
               </h1>
-              <p style="margin: 6px 0 0; font-size: 13px; color: #93c5fd; font-weight: 500;">
+              <p style="margin: 6px 0 0; font-size: 13px; color: #ffe0e5; font-weight: 500;">
                 Babu Banarasi Das University - Campus Hostel Portal
               </p>
             </td>
@@ -110,11 +110,11 @@ export function buildOtpEmailHtml({ name, otp, role, expiresMinutes = 5 }) {
               <!-- OTP Display Box -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 28px 0;">
                 <tr>
-                  <td align="center" style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border: 2px dashed #3b82f6; border-radius: 12px; padding: 24px;">
-                    <div style="font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">
+                  <td align="center" style="background: linear-gradient(135deg, #fffafa 0%, #fff1f3 100%); border: 2px dashed #e8364f; border-radius: 12px; padding: 24px;">
+                    <div style="font-size: 12px; font-weight: 700; color: #c82a41; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">
                       Your One-Time Password (OTP)
                     </div>
-                    <div style="font-size: 38px; font-weight: 800; letter-spacing: 10px; color: #1e3a8a; font-family: 'Courier New', Courier, monospace;">
+                    <div style="font-size: 38px; font-weight: 800; letter-spacing: 10px; color: #a32337; font-family: 'Courier New', Courier, monospace;">
                       ${otp}
                     </div>
                     <div style="font-size: 12px; color: #64748b; margin-top: 8px;">
