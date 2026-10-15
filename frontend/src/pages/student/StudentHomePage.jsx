@@ -165,6 +165,39 @@ export default function StudentHomePage() {
         </div>
       </section>
 
+      {/* Room Virtual Visit & 360° Tour Preview */}
+      <section aria-labelledby="virtual-tour-title" className="relative overflow-hidden rounded-3xl border border-indigo-200/90 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-5 text-white shadow-md">
+        <span className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-indigo-500/20 blur-2xl" />
+        <span className="absolute -left-12 -bottom-12 h-44 w-44 rounded-full bg-brand-500/15 blur-2xl" />
+
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5 max-w-sm">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-200 backdrop-blur-md border border-indigo-400/30">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>360° Interactive Experience</span>
+            </div>
+            <h2 id="virtual-tour-title" className="text-lg font-bold text-white">
+              {t('virtualVisit.cardTitle')}
+            </h2>
+            <p className="text-xs text-indigo-100/80 leading-relaxed">
+              {t('virtualVisit.cardDesc')}
+            </p>
+          </div>
+
+          <div className="shrink-0 flex items-center gap-2">
+            <Link
+              to="/virtual-visit"
+              className="inline-flex h-11 items-center gap-2 rounded-2xl bg-white px-5 text-xs font-bold text-indigo-950 shadow-md transition active:scale-95 hover:bg-indigo-50"
+            >
+              <svg className="h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <span>{t('virtualVisit.exploreCta')}</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section aria-labelledby="now-title">
         <div className="flex items-center justify-between">
           <h2 id="now-title" className="text-xl font-bold text-slate-900">

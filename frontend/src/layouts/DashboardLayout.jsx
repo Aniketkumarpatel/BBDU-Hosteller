@@ -126,6 +126,18 @@ export default function DashboardLayout({ title, roleLabel, children }) {
                 >
                   Mess &amp; Dining
                 </NavLink>
+                <NavLink
+                  to="/virtual-visit"
+                  className={({ isActive }) =>
+                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                    }`
+                  }
+                >
+                  Virtual Visit
+                </NavLink>
                 {!IS_PILOT_MODE && (
                   <>
                     <NavLink
@@ -221,6 +233,18 @@ export default function DashboardLayout({ title, roleLabel, children }) {
                   }
                 >
                   Mess &amp; Dining
+                </NavLink>
+                <NavLink
+                  to="/virtual-visit"
+                  className={({ isActive }) =>
+                    `rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                      isActive
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900'
+                    }`
+                  }
+                >
+                  Virtual Visit
                 </NavLink>
                 {!IS_PILOT_MODE && (
                   <>

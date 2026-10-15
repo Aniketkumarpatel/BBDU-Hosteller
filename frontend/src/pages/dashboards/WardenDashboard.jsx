@@ -154,6 +154,13 @@ export default function WardenDashboard() {
                   <span>🍽</span>
                   Mess &amp; Dining
                 </Link>
+                <Link
+                  to="/virtual-visit"
+                  className="rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 px-3 py-1.5 text-xs font-bold text-white transition flex items-center gap-1.5 shadow-sm"
+                >
+                  <span>📸</span>
+                  Room Media &amp; Upload
+                </Link>
                 <span className="rounded-lg bg-white/10 px-3 py-1.5 font-mono text-xs font-medium text-white">
                   Emp ID: {user?.employeeId || 'WRD-STAFF'}
                 </span>
@@ -276,6 +283,25 @@ export default function WardenDashboard() {
                       className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-indigo-700 transition"
                     >
                       Open Complaints Queue &rarr;
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Virtual Visit Room Media Center */}
+                <div className="mt-4 rounded-xl border-2 border-purple-200 bg-gradient-to-br from-purple-50/70 to-indigo-50/50 p-3.5 shadow-2xs">
+                  <div className="flex items-center gap-2 text-purple-900 font-bold text-xs uppercase tracking-wide">
+                    <span>📸</span>
+                    <span>Room Virtual Visit Media Studio</span>
+                  </div>
+                  <p className="mt-1.5 text-xs text-slate-700 leading-relaxed font-medium">
+                    Upload official room photos (max 6) &amp; walkthrough video tours (max 2, ~15s) for showcase rooms.
+                  </p>
+                  <div className="mt-3">
+                    <Link
+                      to="/virtual-visit"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-2xs hover:brightness-110 transition"
+                    >
+                      <span>📤 Upload Room Media &rarr;</span>
                     </Link>
                   </div>
                 </div>

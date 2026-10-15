@@ -3,6 +3,7 @@ import PilotShell from './PilotShell.jsx';
 const TABS = [
   { to: '/warden/problems', labelKey: 'nav.problems' },
   { to: '/warden/people', labelKey: 'nav.people' },
+  { to: '/virtual-visit', labelKey: 'nav.virtualVisit' },
   { to: '/mess', labelKey: 'nav.mess' },
 ];
 

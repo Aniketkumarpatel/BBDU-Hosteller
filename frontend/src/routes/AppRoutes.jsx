@@ -85,6 +85,9 @@ import ExpenseDetailPage from '../pages/finance/ExpenseDetailPage.jsx';
 import StudentServicesDashboardPage from '../pages/studentServices/StudentServicesDashboardPage.jsx';
 import ServiceRequestDetailPage from '../pages/studentServices/ServiceRequestDetailPage.jsx';
 
+// Room Virtual Visit & 360° Tour (Read-Only)
+import VirtualVisitPage from '../pages/virtualVisit/VirtualVisitPage.jsx';
+
 // Old staff links and bookmarks keep working in pilot mode by forwarding to the new job screen
 function ForwardToJob() {
   const { id } = useParams();
@@ -176,6 +179,7 @@ export default function AppRoutes() {
             <Route path="/student/mess" element={<Navigate to="/mess" replace />} />
             <Route path="/student/outpass" element={<Navigate to="/outpass" replace />} />
             <Route path="/student/services" element={<Navigate to="/student-services" replace />} />
+            <Route path="/student/virtual-visit" element={<Navigate to="/virtual-visit" replace />} />
           </Route>
 
           {/* Warden Portal & Complaints Management */}
@@ -274,6 +278,11 @@ export default function AppRoutes() {
             <Route path="/student-services" element={<StudentServicesDashboardPage />} />
             <Route path="/student-services/requests/:id" element={<ServiceRequestDetailPage />} />
             <Route path="/notices" element={<Navigate to="/student-services" replace />} />
+          </Route>
+
+          {/* Room Virtual Visit & 360° Panoramic Tour (Read-Only) */}
+          <Route element={<RoleProtectedRoute allowedRoles={['STUDENT', 'HOSTEL_STAFF', 'WARDEN', 'AUTHORITY', 'SUPER_ADMIN']} />}>
+            <Route path="/virtual-visit" element={<VirtualVisitPage />} />
           </Route>
         </Route>
 
