@@ -7,6 +7,7 @@ let lastPass = null;
 
 /**
  * Initialize or get cached Nodemailer transporter.
+ * Supports standard Gmail App Passwords and custom SMTP.
  */
 export function getTransporter() {
   const host = process.env.SMTP_HOST;
@@ -34,12 +35,15 @@ export function getTransporter() {
       });
       console.log(`[EmailService] Configured custom SMTP transporter: ${host}:${port} (${user})`);
     } else {
-      // Standard Gmail service with auto port/ssl negotiation
+      // Standard Gmail SMTP configuration (host: smtp.gmail.com, port: 465 SSL)
       cachedTransporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: { user, pass },
+        tls: { rejectUnauthorized: false },
       });
-      console.log(`[EmailService] Configured Gmail SMTP transporter for account: ${user}`);
+      console.log(`[EmailService] Configured Gmail SMTP transporter for: ${user}`);
     }
 
     lastUser = user;
@@ -93,7 +97,7 @@ function buildOtpEmailHtml({ name, otp, role, expiresMinutes = 5 }) {
                 Hello <strong>${name ? name : 'there'}</strong>,
               </p>
               <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #475569;">
-                You are registering as a <strong>${roleDisplay}</strong> on the official BBDU Hosteller platform. Please use the One-Time Password (OTP) below to complete your email verification and activate your account:
+                You are registering as a <strong>${roleDisplay}</strong> on the official BBDU Hosteller platform. Please use the One-Time Password (OTP) below to complete your email verification and confirm your account:
               </p>
 
               <!-- OTP Display Box -->
@@ -101,7 +105,7 @@ function buildOtpEmailHtml({ name, otp, role, expiresMinutes = 5 }) {
                 <tr>
                   <td align="center" style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border: 2px dashed #3b82f6; border-radius: 12px; padding: 24px;">
                     <div style="font-size: 12px; font-weight: 700; color: #2563eb; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">
-                      Your One-Time Password
+                      Your One-Time Password (OTP)
                     </div>
                     <div style="font-size: 38px; font-weight: 800; letter-spacing: 10px; color: #1e3a8a; font-family: 'Courier New', Courier, monospace;">
                       ${otp}
@@ -131,7 +135,7 @@ function buildOtpEmailHtml({ name, otp, role, expiresMinutes = 5 }) {
           <tr>
             <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px 30px; text-align: center;">
               <p style="margin: 0; font-size: 12px; color: #94a3b8; line-height: 1.5;">
-                This is an automated system email sent to your university account.<br>
+                This is an automated system email sent to your account.<br>
                 Babu Banarasi Das University, Faizabad Road, Lucknow, Uttar Pradesh 226028
               </p>
             </td>
@@ -153,15 +157,17 @@ function buildOtpEmailHtml({ name, otp, role, expiresMinutes = 5 }) {
  * @param {string} options.otp
  * @param {string} [options.name]
  * @param {string} [options.role]
- * @returns {Promise<{ delivered: boolean, previewOtp?: string, error?: string }>}
+ * @returns {Promise<{ delivered: boolean, previewOtp?: string, simulated?: boolean, messageId?: string }>}
  */
 export async function sendRegistrationOtpEmail({ email, otp, name = '', role = 'STUDENT' }) {
   const mailTransporter = getTransporter();
   const user = (process.env.EMAIL_USER || process.env.SMTP_USER || '').trim();
-  const fromAddress = process.env.EMAIL_FROM || (user ? `"BBDU Hosteller" <${user}>` : '"BBDU Hosteller" <noreply@bbdu.ac.in>');
+  const fromAddress = (process.env.EMAIL_FROM && user && process.env.EMAIL_FROM.includes(user))
+    ? process.env.EMAIL_FROM
+    : (user ? `"BBDU Hosteller" <${user}>` : '"BBDU Hosteller" <noreply@bbdu.ac.in>');
   const subject = `BBDU Hosteller - Verification OTP: ${otp} (Valid for 5 mins)`;
   const html = buildOtpEmailHtml({ name, otp, role, expiresMinutes: 5 });
-  const text = `Hello ${name || 'User'},\n\nYour BBDU Hosteller verification code is: ${otp}\nValid for 5 minutes.\nDo not share this OTP with anyone.`;
+  const text = `Hello ${name || 'User'},\n\nYour BBDU Hosteller verification code is: ${otp}\nRole: ${role === 'WARDEN' ? 'Hostel Warden' : 'Student Resident'}\nValid for 5 minutes.\nDo not share this OTP with anyone.\n\nBBDU Hostel Administration`;
 
   // Always log OTP to backend console for developer and admin convenience
   console.log('\n================================================================');
@@ -182,7 +188,12 @@ export async function sendRegistrationOtpEmail({ email, otp, name = '', role = '
         html,
       });
       console.log(`[EmailService] ✅ Real OTP email dispatched to ${email}. MessageId: ${info.messageId}`);
-      return { delivered: true, previewOtp: otp, messageId: info.messageId };
+      // When real email is sent to user's Gmail, do NOT return previewOtp so user must check their inbox!
+      return {
+        delivered: true,
+        simulated: false,
+        messageId: info.messageId,
+      };
     } catch (err) {
       console.error(`\n[EmailService] ❌ Error dispatching mail via Gmail/SMTP to ${email}:`, err.message);
       let userMsg = `Failed to send email to ${email}. ${err.message}`;
@@ -194,9 +205,13 @@ export async function sendRegistrationOtpEmail({ email, otp, name = '', role = '
   }
 
   // If no SMTP configured in backend/.env:
-  console.log(`\n[EmailService] ℹ️ Real email skipped: EMAIL_USER & EMAIL_PASS not set in backend/.env.`);
-  console.log(`[EmailService] >>> OTP FOR ${email} IS: [ ${otp} ] <<<`);
-  console.log(`[EmailService] To send real emails to Gmail, add EMAIL_USER and EMAIL_PASS (App Password) to backend/.env\n`);
+  console.log(`\n================================================================`);
+  console.log(`[EmailService] ⚠️ GMAIL SMTP CREDENTIALS NOT CONFIGURED in backend/.env`);
+  console.log(`[EmailService] To send real OTP emails directly to ${email}:`);
+  console.log(`               1. Add EMAIL_USER=your_email@gmail.com in backend/.env`);
+  console.log(`               2. Add EMAIL_PASS=your_16_char_app_password in backend/.env`);
+  console.log(`[EmailService] >>> SIMULATED OTP FOR ${email} IS: [ ${otp} ] <<<`);
+  console.log(`================================================================\n`);
 
   return {
     delivered: false,
