@@ -89,7 +89,7 @@ test('1. Sending OTP to invalid email format is rejected (400 Bad Request)', asy
   assert.match(data.message, /valid email/i);
 });
 
-test('1b. Sending OTP to a personal @gmail.com address succeeds (valid email supported)', async () => {
+test('1b. Sending OTP to a non-BBDU personal email address (@gmail.com) is rejected (400 Bad Request)', async () => {
   const res = await fetch(`${baseUrl}/api/auth/send-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -100,10 +100,10 @@ test('1b. Sending OTP to a personal @gmail.com address succeeds (valid email sup
     }),
   });
 
-  assert.equal(res.status, 200);
+  assert.equal(res.status, 400);
   const data = await res.json();
-  assert.equal(data.success, true);
-  assert.ok(data.data.previewOtp);
+  assert.equal(data.success, false);
+  assert.match(data.message, /@bbdu\.ac\.in/i);
 });
 
 test('2. Sending OTP for STUDENT generates OTP and returns preview in dev/simulated mode', async () => {
