@@ -20,7 +20,7 @@ export const handleGetMyFeedbacks = asyncHandler(async (req, res) => {
 });
 
 export const handleGetMessFeedbacks = asyncHandler(async (req, res) => {
-  const result = await messService.getMessFeedbacks(req.query);
+  const result = await messService.getMessFeedbacks(req.query, req.user);
   res.status(200).json({
     success: true,
     data: result.feedbacks,

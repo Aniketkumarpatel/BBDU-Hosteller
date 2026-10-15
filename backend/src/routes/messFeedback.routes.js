@@ -29,8 +29,10 @@ router.get(
   handleGetFeedbackAnalytics
 );
 
+// Student names and comments: only the people who manage a mess (scoped again in the service)
 router.get(
   '/',
+  requireRole(ROLES.SUPER_ADMIN, ROLES.AUTHORITY, ROLES.WARDEN, ROLES.HOSTEL_STAFF),
   handleGetMessFeedbacks
 );
 

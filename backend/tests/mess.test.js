@@ -132,6 +132,8 @@ before(async () => {
     name: 'Chef Ramesh',
     email: 'staff.mess@bbdu.ac.in',
     role: 'HOSTEL_STAFF',
+    // Mess staff run the mess of their own hostel (DEC-037), so they must have a hostel
+    hostelId: testHostel._id,
     departmentId: testDept._id,
     passwordHash,
     isActive: true,

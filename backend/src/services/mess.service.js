@@ -25,6 +25,7 @@ import { createNotification, createBatchNotifications } from './notification.ser
 import { getTodayDateString, getDayOfWeek, HOSTEL_TIMEZONE } from '../utils/date.js';
 import ApiError from '../utils/ApiError.js';
 import { extractWeeklyMenuFromFile } from './ocr.service.js';
+import { removeUploadedFiles } from '../utils/uploadFiles.js';
 import { OFFICIAL_BBDU_MENU } from '../constants/officialMenu.js';
 
 // ==========================================
@@ -56,6 +57,30 @@ export const generateNoticeId = async () => {
 };
 
 // ==========================================
+// WHO MAY MANAGE A MESS (DEC-037)
+// ==========================================
+// Administrators and the Authority manage every mess. A Warden or technician manages the mess of
+// their own hostel only (the DEC-028 hostel rule applied to the mess); one with no hostel manages
+// none. Students and everyone else manage nothing. Every write and the feedback list use this.
+const MANAGES_EVERY_MESS = [ROLES.SUPER_ADMIN, ROLES.AUTHORITY];
+const MANAGES_OWN_HOSTEL_MESS = [ROLES.WARDEN, ROLES.HOSTEL_STAFF];
+
+export const mayManageMess = (user, mess) => {
+  if (!user || !mess) return false;
+  if (MANAGES_EVERY_MESS.includes(user.role)) return true;
+  if (!MANAGES_OWN_HOSTEL_MESS.includes(user.role)) return false;
+  const hostelId = mess.hostelId?._id || mess.hostelId;
+  return Boolean(user.hostelId) && String(user.hostelId) === String(hostelId);
+};
+
+export const assertMayManageMess = (user, mess) => {
+  if (!mess) throw new ApiError(404, 'Mess not found');
+  if (!mayManageMess(user, mess)) {
+    throw new ApiError(403, 'You can manage the mess of your own hostel only.');
+  }
+};
+
+// ==========================================
 // 1. MESS MANAGEMENT
 // ==========================================
 
@@ -75,6 +100,7 @@ export const createMess = async (data, user) => {
   if (!hostel) {
     throw new ApiError(404, 'Associated hostel not found');
   }
+  assertMayManageMess(user, { hostelId });
 
   const messId = await generateMessId();
 
@@ -184,9 +210,7 @@ export const getMessById = async (id) => {
 
 export const updateMess = async (id, data, user) => {
   const mess = await Mess.findById(id);
-  if (!mess) {
-    throw new ApiError(404, 'Mess not found');
-  }
+  assertMayManageMess(user, mess);
 
   if (data.name !== undefined) mess.name = data.name.trim();
   if (data.description !== undefined) mess.description = data.description.trim();
@@ -240,6 +264,7 @@ export const createOrUpdateMenu = async (messId, data, user) => {
   if (!mess) {
     throw new ApiError(404, 'Mess not found');
   }
+  assertMayManageMess(user, mess);
 
   const findFilter = normalizedDate
     ? { messId, date: normalizedDate, mealType: normalizedMeal }
@@ -378,6 +403,7 @@ export const publishMenu = async (menuId, user) => {
   if (!menu) {
     throw new ApiError(404, 'Menu not found');
   }
+  assertMayManageMess(user, menu.messId);
 
   menu.isPublished = true;
   menu.updatedBy = user._id;
@@ -423,6 +449,7 @@ export const unpublishMenu = async (menuId, user) => {
   if (!menu) {
     throw new ApiError(404, 'Menu not found');
   }
+  assertMayManageMess(user, await Mess.findById(menu.messId));
 
   menu.isPublished = false;
   menu.updatedBy = user._id;
@@ -469,6 +496,9 @@ export const submitFeedback = async (data, studentUser) => {
   const mess = await Mess.findById(messId);
   if (!mess) {
     throw new ApiError(404, 'Mess not found');
+  }
+  if (!studentUser.hostelId || String(studentUser.hostelId) !== String(mess.hostelId)) {
+    throw new ApiError(403, 'You can rate the mess of your own hostel only.');
   }
 
   // Normalize mealDate to UTC midnight (YYYY-MM-DD)
@@ -605,14 +635,25 @@ export const getMyFeedbacks = async (studentUser, query = {}) => {
   };
 };
 
-export const getMessFeedbacks = async (query = {}) => {
+export const getMessFeedbacks = async (query = {}, user = null) => {
   const page = Math.max(1, parseInt(query.page || '1', 10));
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '20', 10)));
   const skip = (page - 1) * limit;
 
+  // Student names and comments are personal data: only people who manage a mess read them, and
+  // only for the messes they manage (DEC-037)
+  if (!user || !(MANAGES_EVERY_MESS.includes(user.role) || MANAGES_OWN_HOSTEL_MESS.includes(user.role))) {
+    throw new ApiError(403, 'You do not have permission to read meal feedback.');
+  }
+
   const filter = {};
   if (query.messId && mongoose.isValidObjectId(query.messId)) {
-    filter.messId = query.messId;
+    const requested = await Mess.findById(query.messId).lean();
+    assertMayManageMess(user, requested);
+    filter.messId = requested._id;
+  } else if (!MANAGES_EVERY_MESS.includes(user.role)) {
+    const own = user.hostelId ? await Mess.find({ hostelId: user.hostelId }).select('_id').lean() : [];
+    filter.messId = { $in: own.map((m) => m._id) };
   }
   if (query.mealType) {
     filter.mealType = query.mealType.trim().toUpperCase();
@@ -626,7 +667,7 @@ export const getMessFeedbacks = async (query = {}) => {
 
   const [feedbacks, total] = await Promise.all([
     MessFeedback.find(filter)
-      .populate('studentId', 'name studentId email')
+      .populate('studentId', 'name studentId')
       .populate('messId', 'name code')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -658,9 +699,7 @@ export const createNotice = async (data, user) => {
   }
 
   const mess = await Mess.findById(messId);
-  if (!mess) {
-    throw new ApiError(404, 'Mess not found');
-  }
+  assertMayManageMess(user, mess);
 
   const noticeId = await generateNoticeId();
 
@@ -729,6 +768,7 @@ export const toggleNoticeActive = async (noticeId, isActive, user) => {
   if (!notice) {
     throw new ApiError(404, 'Notice not found');
   }
+  assertMayManageMess(user, await Mess.findById(notice.messId));
 
   notice.isActive = Boolean(isActive);
   await notice.save();
@@ -877,11 +917,13 @@ export const getMessDashboard = async (user, query = {}) => {
     .lean();
 
   // Recent feedbacks
-  const recentFeedbacks = await MessFeedback.find({ messId: mess._id })
-    .populate('studentId', 'name studentId')
-    .sort({ createdAt: -1 })
-    .limit(5)
-    .lean();
+  const recentFeedbacks = mayManageMess(user, mess)
+    ? await MessFeedback.find({ messId: mess._id })
+        .populate('studentId', 'name studentId')
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .lean()
+    : [];
 
   return {
     mess,
@@ -1028,8 +1070,12 @@ export const extractWeeklyMenuDocument = async ({ file, messId, user }) => {
   }
 
   const mess = await Mess.findById(messId).lean();
-  if (!mess) {
-    throw new ApiError(404, 'Associated mess not found');
+  // A refused upload must not leave the file multer already saved
+  try {
+    assertMayManageMess(user, mess);
+  } catch (error) {
+    await removeUploadedFiles([file]);
+    throw error;
   }
 
   const result = await extractWeeklyMenuFromFile({
@@ -1051,9 +1097,7 @@ export const extractWeeklyMenuDocument = async ({ file, messId, user }) => {
  */
 export const confirmAndPublishWeeklySchedule = async (messId, schedule, user) => {
   const mess = await Mess.findById(messId);
-  if (!mess) {
-    throw new ApiError(404, 'Associated mess not found');
-  }
+  assertMayManageMess(user, mess);
 
   if (!schedule || typeof schedule !== 'object') {
     throw new ApiError(400, 'Valid weekly schedule object is required');
