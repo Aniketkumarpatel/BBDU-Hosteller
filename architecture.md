@@ -321,11 +321,13 @@ BBDU-Hosteller/
         |-- components/problems/ # Warden screens: ProblemCard, AssignSheet (DEC-029)
         |-- components/student/  # Student screens: categoryStyle, StudentStatusChip, EtaLine, TrackerCard, Timeline, BottomTabs (DEC-031)
         |-- components/virtualVisit/ # PanoramaViewer, RoomDetailsModal (read-only room tours; recoloured to the brand red, DEC-034)
+        |-- components/mess/     # DayStrip, MealCard, RatingSheet, MenuSheet, NoticeSheet, NoticeList, FoodHealth, Stars, mealStyle (DEC-037)
+        |-- pages/mess/          # MessPage (role switch), StudentMess, ManagerMess, WeeklyMenuUploadModal (DEC-037)
         |-- pages/virtualVisit/  # VirtualVisitPage (opens inside the student or Warden shell)
         |-- fonts.css            # Self-hosted Poppins (latin and devanagari, five weights), DEC-032
         |   (components/common/PilotNotificationBell.jsx: plain-language bell used by PilotShell, DEC-030; the old NotificationBell stays for other roles)
-        |-- hooks/               # useUnreadCount.js (unread notification count for the student tabs); useAuth is in AuthContext
-        |-- utils/               # passwordPolicy.js, jobPresentation.js (pure technician job rules), problemPresentation.js (pure Warden rules), notificationPresentation.js (pure notification wording, routes, time since), studentPresentation.js (pure student stage, promise, timeline and report payload), jobFormat.js and studentFormat.js (pure wording helpers)
+        |-- hooks/               # useUnreadCount.js (unread notification count for the student tabs); useAutoRefresh.js (20 second refresh while visible, DEC-036); useAuth is in AuthContext
+        |-- utils/               # passwordPolicy.js, jobPresentation.js (pure technician job rules), problemPresentation.js (pure Warden rules), notificationPresentation.js (pure notification wording, routes, time since), studentPresentation.js (pure student stage, promise, timeline and report payload), messPresentation.js (pure Mess rules: days in the hostel time zone, meal phase, rating mapping, dish parsing), jobFormat.js and studentFormat.js (pure wording helpers)
         |-- (frontend/tests/)    # node:test unit tests for the dictionary and job rules (npm test in frontend)
         |-- assets/              # Static assets (images, icons)
 ```

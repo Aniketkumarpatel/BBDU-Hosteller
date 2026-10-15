@@ -267,7 +267,7 @@ npm run seed
 | `/assets/:id` | Student, Staff, Warden, Authority, Admin | Asset details, deterministic health gauge, warranty countdown, multi-tab history & lifecycle actions |
 | `/maintenance` | Staff, Warden, Authority, Admin | Preventive maintenance dashboard, upcoming/overdue tabs & plan wizard |
 | `/maintenance/plans/:id` | Staff, Warden, Authority, Admin | Maintenance plan detail, pause/resume/deactivate controls & cycle timeline |
-| `/mess` | Student, Staff, Warden, Authority, Admin | Mess & dining dashboard, today's meals, student ratings, hygiene metrics & notices |
+| `/mess` | Student, Staff, Warden, Authority, Admin | Students: the menu of each meal by day, rate a meal, notices, tell the warden about a food problem. Wardens, mess staff, Authority and Admin: upload the weekly menu photo, edit menus, post notices, see how the food is rated (a Warden or staff member manages the mess of their own hostel only) |
 | `/virtual-visit` | Student, Staff, Warden, Authority, Admin | Read-only room tours (photos, short videos, live bed availability); a Warden manages the media of rooms in their own hostel |
 | `/cleaning` | Staff, Warden, Authority, Admin | Cleaning & Housekeeping dashboard, checklist executor, supervisor verification & area registry |
 | `/outpass` | Student, Staff, Warden, Authority, Admin | Visitor & Outpass dashboard, digital passes, QR gate verifier, overdue monitor & visitor log |
