@@ -198,6 +198,11 @@ export const sendRegistrationOtp = async ({ email, role = ROLES.STUDENT, name = 
     throw ApiError.badRequest('Please provide a valid email address.');
   }
 
+  const domain = normalizedEmail.split('@')[1];
+  if (domain !== 'bbdu.ac.in' && !domain?.endsWith('.bbdu.ac.in')) {
+    throw ApiError.badRequest('Please use your official BBDU email address ending with @bbdu.ac.in');
+  }
+
   // Check if an active user account already exists with this email
   const existingUser = await User.findOne({ email: normalizedEmail });
   const isExisting = Boolean(existingUser && existingUser.isActive);
@@ -227,9 +232,13 @@ export const sendRegistrationOtp = async ({ email, role = ROLES.STUDENT, name = 
 
   return {
     isExisting,
-    message: isExisting
-      ? `Verification code sent to ${normalizedEmail}. (Existing account: verifying OTP will update your profile).`
-      : `Verification code sent to ${normalizedEmail}. Please check your inbox.`,
+    delivered: Boolean(sendResult.delivered),
+    simulated: Boolean(sendResult.simulated),
+    message: sendResult.delivered
+      ? `Verification code sent to your Gmail (${normalizedEmail}). Please check your inbox and spam folder.`
+      : (isExisting
+          ? `Verification code generated for ${normalizedEmail}. (Existing account: verifying OTP will update your profile).`
+          : `Verification code generated for ${normalizedEmail}. Please check your inbox.`),
     previewOtp: sendResult.previewOtp,
   };
 };
@@ -280,6 +289,11 @@ export const registerUser = async (userData) => {
   const email = (userData.email || '').trim().toLowerCase();
   if (!email || !email.includes('@')) {
     throw ApiError.badRequest('Please provide a valid email address.');
+  }
+
+  const domain = email.split('@')[1];
+  if (domain !== 'bbdu.ac.in' && !domain?.endsWith('.bbdu.ac.in')) {
+    throw ApiError.badRequest('Please use your official BBDU email address ending with @bbdu.ac.in');
   }
 
   // OTP Verification Check - strictly required for registration to complete
