@@ -146,15 +146,18 @@ BBDU-Hosteller/
 |   |   |   |-- studentServices.constants.js       # Notice categories, request types
 |   |   |   |-- hostel.js                          # Hostel types
 |   |   |
-|   |   |-- middleware/          # 6 middleware modules
+|   |   |-- middleware/          # 8 middleware modules
 |   |   |   |-- auth.js          # requireAuth (JWT + user lookup) + requireRole (RBAC gate)
 |   |   |   |-- errorHandler.js  # notFoundHandler + centralized errorHandler
 |   |   |   |-- mongoSanitize.js # Recursive NoSQL injection prevention
+|   |   |   |-- upload.js        # Complaint photo upload (multer); saved extension comes from the checked file type (DEC-034)
+|   |   |   |-- menuUpload.js    # Weekly mess menu photo or PDF upload (same rule)
+|   |   |   |-- roomMediaUpload.js # Room photos, videos and 360 picture upload for the virtual visit (same rule)
 |   |   |   |-- rateLimiter.js   # 4 tiered limiters (global, auth, AI, analytics)
 |   |   |   |-- upload.js        # multer complaint photo upload (single 'attachment', image types, 5 MB, local disk)
 |   |   |   |-- validate.js      # Zod schema validation + privilege escalation detection
 |   |   |
-|   |   |-- models/              # 37 Mongoose schemas + index.js barrel
+|   |   |-- models/              # 38 Mongoose schemas (Otp added for email codes; schemaOptions.js is a helper) + index.js barrel
 |   |   |   |-- index.js         # Central export + allModels dictionary + initModels()
 |   |   |   |-- schemaOptions.js # Shared schema options (timestamps, toJSON, toObject)
 |   |   |   |-- User.js          # passwordHash select:false, role enum, location refs
@@ -162,13 +165,13 @@ BBDU-Hosteller/
 |   |   |   |-- Asset.js         # Health scoring fields, failure count, warranty
 |   |   |   |-- ... (34 more model files)
 |   |   |
-|   |   |-- controllers/         # 25 thin controller files
+|   |   |-- controllers/         # 26 thin controller files
 |   |   |   |-- auth.controller.js
 |   |   |   |-- complaint.controller.js
 |   |   |   |-- dashboard.controller.js        # Role-aware stats aggregation
 |   |   |   |-- ... (23 more controller files)
 |   |   |
-|   |   |-- services/            # 16 domain logic services (all DB operations)
+|   |   |-- services/            # 17 domain logic services (all DB operations)
 |   |   |   |-- complaint.service.js           # 47KB - full complaint lifecycle
 |   |   |   |-- asset.service.js               # 44KB - asset CRUD + health scoring
 |   |   |   |-- studentServices.service.js     # 43KB - notices, requests, feedback
@@ -185,7 +188,7 @@ BBDU-Hosteller/
 |   |   |   |-- securityAudit.service.js       # 5KB - immutable audit logging
 |   |   |   |-- notification.service.js        # 5KB - notification CRUD
 |   |   |
-|   |   |-- routes/              # 21 route definition files + index.js barrel
+|   |   |-- routes/              # 22 route definition files + index.js barrel
 |   |   |   |-- index.js         # Central router mounting all route groups under /api
 |   |   |   |-- auth.routes.js   # [authLimiter, validate(schema)] -> controller
 |   |   |   |-- complaint.routes.js  # 18+ endpoints with fine-grained RBAC
@@ -198,13 +201,16 @@ BBDU-Hosteller/
 |   |   |   |-- auth.validator.js       # Zod schemas for register/login
 |   |   |   |-- complaint.validator.js  # Imperative validator for complaint input
 |   |   |
-|   |   |-- utils/               # 6 utility modules
+|   |   |-- utils/               # 10 utility modules
 |   |       |-- ApiError.js      # Operational error class with status code factories
 |   |       |-- asyncHandler.js  # Promise.resolve wrapper for Express route handlers
 |   |       |-- dateUtils.js     # Calendar-safe month addition for maintenance scheduling
 |   |       |-- jwt.js           # signToken (minimal claims) + verifyToken
 |   |       |-- password.js      # bcrypt hash (12 rounds) + compare
 |   |       |-- userSerializer.js # Strips passwordHash, formats safe user object
+|   |       |-- corsOrigin.js    # isOriginAllowed: configured origins, development-only local and private addresses, look-alike hosts refused (DEC-034)
+|   |       |-- uploadFiles.js   # safeExtension (from file type), isRoomMediaUrl, removeUploadedFiles (DEC-034)
+|   |       |-- temporaryPassword.js # one-time password generator for admin and Warden resets (DEC-022)
 |   |
 |   |-- seed/
 |   |   |-- seed.js              # Idempotent seeder: 5 demo users, 7 official hostels (OFFICIAL_HOSTELS), hierarchy, maintenance departments, SLA/escalation rules (all escalationEnabled: true)
@@ -255,6 +261,7 @@ BBDU-Hosteller/
         |   |-- StaffJobsLayout.jsx   # Technician shell: PilotShell with no tabs (DEC-026)
         |   |-- WardenPilotLayout.jsx # Warden shell: PilotShell with tabs Problems and People (DEC-029)
         |   |-- StudentPilotLayout.jsx # Student shell: location row, language switch, bottom tabs Home, Problems, Alerts, Me (DEC-031)
+        |   (routes/AppRoutes.jsx also holds RoleAwareLayout: /mess and /virtual-visit open inside the student or Warden pilot shell by role, in the dashboard for other roles and in non-pilot builds; it sets DashboardLayoutContext so the old pages add no second header, DEC-034)
         |
         |-- components/
         |   |-- common/          # 14 reusable UI components
@@ -313,6 +320,9 @@ BBDU-Hosteller/
         |-- components/jobs/     # Technician screens: JobCard, StageChip, DueLine, ProgressSteps, FinishSheet, icons, stageStyle
         |-- components/problems/ # Warden screens: ProblemCard, AssignSheet (DEC-029)
         |-- components/student/  # Student screens: categoryStyle, StudentStatusChip, EtaLine, TrackerCard, Timeline, BottomTabs (DEC-031)
+        |-- components/virtualVisit/ # PanoramaViewer, RoomDetailsModal (read-only room tours; recoloured to the brand red, DEC-034)
+        |-- pages/virtualVisit/  # VirtualVisitPage (opens inside the student or Warden shell)
+        |-- fonts.css            # Self-hosted Poppins (latin and devanagari, five weights), DEC-032
         |   (components/common/PilotNotificationBell.jsx: plain-language bell used by PilotShell, DEC-030; the old NotificationBell stays for other roles)
         |-- hooks/               # useUnreadCount.js (unread notification count for the student tabs); useAuth is in AuthContext
         |-- utils/               # passwordPolicy.js, jobPresentation.js (pure technician job rules), problemPresentation.js (pure Warden rules), notificationPresentation.js (pure notification wording, routes, time since), studentPresentation.js (pure student stage, promise, timeline and report payload), jobFormat.js and studentFormat.js (pure wording helpers)
@@ -753,7 +763,7 @@ Required properties: HTTPS, daily backups with a tested restore, unique credenti
 |:---|:---|:---|:---|:---|
 | C1 | Scheduler lock is an in-memory boolean | `scheduler/slaScheduler.js` | Two API processes would both run every job, duplicating escalations and notifications | Single instance now; DB-backed lease before scaling (risk R9) |
 | C2 | Rate limit keys are IP-only; no `trust proxy` | `middleware/rateLimiter.js`, `app.js` | Cohort shares one budget behind a proxy or NAT (blocker B8) | DEC-025 |
-| C3 | Uploads served by `express.static`, local disk | `app.js`, `middleware/upload.js` | No authorization, no content verification, data tied to one machine's disk (blocker B3) | DEC-021 |
+| C3 | Uploads served by `express.static`, local disk (partly mitigated 2026-10-15, DEC-034: saved extension from the checked file type; every file served with a sandboxing Content-Security-Policy and nosniff; still no authorization and no content check) | `app.js`, `middleware/upload.js` | No authorization, no content verification, data tied to one machine's disk (blocker B3) | DEC-021 |
 | C4 | Pilot gating is an opt-in env flag (fail-open default) | `config/env.js`, `services/sla.service.js`, `scheduler/slaScheduler.js` | Escalation and deferred jobs are gated only when `PILOT_MODE=true`; a missing flag silently restores full escalation (blockers B1, B2 closed in code, DEC-020) | Startup log line shows the mode; Go-Live Gate item 6 requires the flag set |
 | C5 | Seeds still use `Password@123` and the login page prints it | `seed/seed.js`, `LoginPage.jsx` | The password lifecycle works in API and UI, but demo credentials are still created and advertised (blocker B4, mostly closed). Tokens issued in the same second as a password change are not revoked (JWT `iat` precision) | DEC-022, task 5.3c, defect D2 |
 | C6 | Complaint timestamps are overwritten on reassign and reopen; no general status history | `Complaint` model, `complaint.service.js` | Metrics need per-attempt (`ComplaintResolution`) and per-cycle (`ComplaintSlaCycle`) data and explicit semantics | Metrics script rules in report.md 17.6.1 |

@@ -50,8 +50,9 @@
 - 23 integration suites. **Last fully green run (2026-10-10, after Phase 5 task 5.3b): 290 tests, 290 passed, 0 failed, 0 skipped, 0 cancelled** (a later run on the same day is described under Backend run below) (277 at the 5.1 run on 2026-10-09, plus 13 in `passwordLifecycle.test.js`). `npm run build` in `frontend` also passes. Run against a temporary local MongoDB (mongodb-memory-server outside the project), with both `MONGODB_URI` and `TEST_MONGODB_URI` overridden so the Atlas dev cluster was never reachable.
 - The earlier Step 18 figure (248 tests, 235 passed, 13 skipped, 20 suites) is historical. The 13 skips were checks conditional on `TEST_MONGODB_URI` being set explicitly; they ran in the 2026-10-09 run because the URI was provided.
 - Backend run after U4 and the student redesign (2026-10-10): 304 tests, 303 passed, 1 failed, 0 skipped, 0 cancelled, on a throwaway MongoDB with both URIs overridden and the two missing OCR packages stubbed. The 6 tests in `tests/wardenAssignScope.test.js` and the 5 in `tests/notificationContext.test.js` all pass. The 1 failure is `mess.test.js` test 9 (weekly menu upload and OCR, from commit `0bb4886`): the upload returns 500 because `tesseract.js` and `pdf-parse` are not installed on this machine (the user declined `npm install`) and the stub cannot do OCR. It is an environment gap, not a code regression, but it is NOT proven passing here: run `npm install` in `backend` and `npm test` on a machine with the packages (against a throwaway or local MongoDB, never the Atlas URI) to close it.
+- Backend run after the merge review, step 2 (2026-10-15): 340 tests, 339 passed, 1 failed, 0 skipped, 0 cancelled, on a throwaway MongoDB with both URIs overridden and `tesseract.js` and `nodemailer` stubbed (neither is installed on this machine). The one failure is again `mess.test.js` test 9 (weekly menu upload and OCR), the same environment gap. Steps 3 and 4 changed only the frontend and the email colours; the registration, OTP and hostel allocation test files were re-run after step 4 (47 of 47). To close the OCR gap: `npm install` in `backend` on a machine with the packages, then `npm test` against a throwaway MongoDB.
 - `tests/notificationContext.test.js` (5 tests, DEC-030) was written and EXECUTED on 2026-10-10 (5 of 5 pass) because it uses the notification service directly and does not load the app.
-- Frontend: `npm test` in `frontend` runs 45 native `node:test` unit tests (2026-10-10 after the student redesign) covering the English and Hindi dictionary and the technician, Warden, notification and student presentation rules. They need no database. Frontend screens are otherwise verified by `npm run build` and by driving the app in a browser.
+- Frontend: `npm test` in `frontend` runs 48 native `node:test` unit tests (2026-10-15 after the merge review) covering the English and Hindi dictionary and the technician, Warden, notification and student presentation rules. They need no database. Frontend screens are otherwise verified by `npm run build` and by driving the app in a browser.
 - To reproduce: start any empty MongoDB, then run `npm test` in `backend` with `TEST_MONGODB_URI` pointing at it. Never point `TEST_MONGODB_URI` or `MONGODB_URI` at a database you want to keep: suites call `dropDatabase()`.
 
 ### Development Tools
@@ -284,7 +285,25 @@ Re-seed: `cd backend && npm run seed`
 
 ---
 
-## 5. Database Models (37 Total)
+### 4.21 Email OTP Registration (second developer, hardened 2026-10-15, DEC-034)
+- `POST /api/auth/send-otp` creates a 6-digit code (`crypto.randomInt`), stores it in the `Otp` model (5 minute TTL, attempts counted, locked after 5 wrong tries) and emails it; `POST /api/auth/verify-otp` checks it; `POST /api/auth/register` also accepts the code directly and counts wrong tries the same way
+- Only `@bbdu.ac.in` addresses (and its subdomains); public registration is STUDENT only (a Warden can reset other users' passwords, so a self-made Warden account was refused, DEC-004, DEC-007)
+- A record found through a Student ID that belongs to a different email is never re-registered (closed an account takeover); the email of an existing account is never rewritten
+- `services/email.service.js` sends through Nodemailer (Gmail App Password via `EMAIL_USER` and `EMAIL_PASS`, or any SMTP via `SMTP_*`), certificate checking on, user text escaped in the HTML. Outside production a missing mail account prints the code and returns it to the page (development convenience); in production it is a 503 and the code is never printed or returned
+- Frontend `RegisterPage`: student-only, English and Hindi, bottom sheet for the code with a resend timer
+- Not yet: code stored as plain text, `isExisting` in the send reply reveals whether an account exists, no per-email resend limit beyond the IP limiter (see D9 to D11); real email delivery not yet verified on a machine with `nodemailer` and a mail account
+- Coverage: `tests/registrationOtpFlow.test.js` (10 tests), `tests/auth.test.js` 5b
+
+### 4.22 Room Virtual Visit (second developer, hardened 2026-10-15, DEC-034)
+- Read-only tours of showcase rooms: `GET /api/virtual-visit/explore` and `GET /api/virtual-visit/rooms/:id` for any signed-in user (hostel, block, floor, room, photos, short videos, 360 picture, live bed availability); no booking
+- Room media is managed by a Warden for rooms of their own hostel only, or a Super Admin for any room: `POST /rooms/:id/upload` (up to 6 photos and 2 videos, 40 MB), `DELETE /rooms/:id/media-item`, `PATCH /rooms/:id/media`; media links can only be files the server stored under `/uploads/rooms/`
+- Room model gained `photos`, `videos`, `panorama360`, `facilities`, `description`, `isVirtualVisitRoom`; frontend `pages/virtualVisit/VirtualVisitPage`, `components/virtualVisit/PanoramaViewer` and `RoomDetailsModal`
+- Opens inside the student or Warden pilot shell through `RoleAwareLayout` (Section 8); recoloured to the brand red; still English-only with 28 emoji (see D13)
+- Coverage: `tests/virtualVisitScope.test.js` (12 tests), `tests/uploadFiles.test.js` (5)
+
+---
+
+## 5. Database Models (38 Total)
 
 | # | Model | File | Key Fields |
 |:---|:---|:---|:---|
@@ -325,10 +344,11 @@ Re-seed: `cd backend && npm run seed`
 | 35 | HostelContact | HostelContact.js | hostelId, contactType, name, phone, isEmergency |
 | 36 | SecurityAuditLog | SecurityAuditLog.js | auditId, eventType, severity, actorId, targetEntity |
 | 37 | Counter | Counter.js | modelName, seq (auto-increment counter for human-readable IDs) |
+| 38 | Otp | Otp.js | email, otp, role, purpose, verified, attempts, expiresAt (TTL index removes it after 5 minutes) |
 
 ---
 
-## 6. Backend Services (16 Domain Logic Modules)
+## 6. Backend Services (17 Domain Logic Modules)
 
 | Service File | Size | Responsibility |
 |:---|:---|:---|
@@ -347,6 +367,8 @@ Re-seed: `cd backend && npm run seed`
 | auth.service.js | 6,703 B | Registration, login, token generation, profile retrieval |
 | securityAudit.service.js | 5,747 B | Immutable audit event logging with automatic redaction |
 | notification.service.js | 5,189 B | Notification creation, mark read, unread count, bulk mark |
+| email.service.js | 11,156 B | Nodemailer transport (Gmail App Password or SMTP), registration code email, development-only code exposure, 503 in production without a mail account |
+| ocr.service.js | 9,871 B | Weekly mess menu photo and PDF text extraction (`tesseract.js`, `pdf-parse`; not installed on the documentation machine, D8) |
 
 ---
 
@@ -354,7 +376,9 @@ Re-seed: `cd backend && npm run seed`
 
 ### Public Routes (No Auth)
 - `GET /api/health` - Health check with DB status (connection string never exposed)
-- `POST /api/auth/register` - Student-only registration
+- `POST /api/auth/send-otp` - Email a 6-digit code to a `@bbdu.ac.in` address (rate limited)
+- `POST /api/auth/verify-otp` - Check the code (5 tries)
+- `POST /api/auth/register` - Student-only registration, needs the emailed code (outside the test environment)
 - `POST /api/auth/login` - JWT token issuance
 
 ### Authenticated Routes (All require `requireAuth`)
@@ -385,6 +409,10 @@ Re-seed: `cd backend && npm run seed`
 ### Maintenance Routes (`/api/maintenance-plans`, `/api/maintenance`)
 - Plan CRUD, pause/resume/deactivate
 - Dashboard, upcoming, due, overdue queries
+
+### Virtual Visit Routes (`/api/virtual-visit`, all require `requireAuth`)
+- `GET /explore`, `GET /rooms/:id` - Any signed-in role, read-only
+- `POST /rooms/:id/upload`, `DELETE /rooms/:id/media-item`, `PATCH /rooms/:id/media` - Warden of the room's own hostel, or Super Admin
 
 ### Mess Routes (`/api/messes`, `/api/mess-feedback`, `/api/mess-notices`)
 - Mess CRUD, menu management, publish/unpublish
@@ -430,7 +458,7 @@ Re-seed: `cd backend && npm run seed`
 |:---|:---|:---|
 | `/` | LandingPage | Public landing page |
 | `/login` | LoginPage | Role-based login form |
-| `/register` | RegisterPage | Student self-registration |
+| `/register` | RegisterPage | Student self-registration: form, then a 6-digit code emailed to the university address (English and Hindi) |
 
 ### Student Portal (`STUDENT` role)
 | Route | Component |
@@ -501,7 +529,8 @@ Re-seed: `cd backend && npm run seed`
 | `/assets/:id` | All authenticated | AssetDetailPage |
 | `/maintenance` | Staff, Warden, Authority, Admin | MaintenanceDashboardPage |
 | `/maintenance/plans/:id` | Staff, Warden, Authority, Admin | MaintenancePlanDetailPage |
-| `/mess` | All authenticated | MessDashboardPage |
+| `/mess` | All authenticated | MessDashboardPage (opens inside the student or Warden pilot shell, in the dashboard for other roles) |
+| `/virtual-visit` | All authenticated | VirtualVisitPage (same shell rule; media upload only for Warden of the hostel and Super Admin) |
 | `/cleaning` | Staff, Warden, Authority, Admin | CleaningDashboardPage |
 | `/outpass` | All authenticated | OutpassDashboardPage |
 | `/ai-command-center` | Warden, Authority, Admin | AiCommandCenterPage |
@@ -518,7 +547,7 @@ Re-seed: `cd backend && npm run seed`
 
 ---
 
-## 9. Test Suites (25 Suites, 304 Tests on 2026-10-10: 303 passing, 1 environment failure in the weekly menu OCR test; see Section 2)
+## 9. Test Suites (29 Suites, 340 Tests on 2026-10-15: 339 passing, 1 environment failure in the weekly menu OCR test; see Section 2)
 
 | Test File | Focus Area |
 |:---|:---|
@@ -545,6 +574,12 @@ Re-seed: `cd backend && npm run seed`
 | hostelAllocationRegistration.test.js | Student registration with hostel/block/floor/room allocation, occupancy conflict, domain and duplicate-ID rules |
 | passwordLifecycle.test.js | Password lifecycle (DEC-022): self-service change, wrong-password 400 not 401, policy, session revocation, admin and warden-scoped reset, forced-change gate and its allow-list, audit trail without secrets, admin form policy, temporary password generator, warden-scoped user list (13 tests; a mutation check that disables revocation and the gate makes tests 4, 6 and 9 fail) |
 | pilotGating.test.js | `PILOT_MODE` (DEC-020): no escalation or reassignment, hostel-warden-only breach and unassigned-reminder notices, executives untouched, deferred jobs skipped, control run still escalates, scheduler reads the env flag (7 tests) |
+| registrationOtpFlow.test.js | Email code registration: send, verify, attempt lock, student-only, Student ID takeover refused, production exposure, escaping |
+| corsOrigin.test.js | CORS origin rules: configured origins, development-only local and private addresses, look-alike hosts refused |
+| uploadFiles.test.js | Safe extension from file type, room media URL rules, cleanup of refused uploads |
+| virtualVisitScope.test.js | Room media scope (own hostel, Super Admin), safe uploads, sandbox headers, media link rules |
+| wardenAssignScope.test.js | Warden assignment limited to staff of the own hostel (DEC-028) |
+| notificationContext.test.js | Notification metadata gets room, block and title (DEC-030) |
 
 ### Non-test verification and operations scripts
 | Script | Purpose |
@@ -700,7 +735,7 @@ Frontend proxies `/api` to `http://localhost:5000` during development, so `VITE_
 |:---|:---|:---|:---|
 | B1 | Auto-escalation to Authority is active, contradicting DEC-015 | `escalationEnabled: true` on all seeded SLA rules; `escalateComplaint` called on any breach | 5.1 (CLOSED 2026-10-09 when `PILOT_MODE=true`; verified by tests) |
 | B2 | Deferred modules' scheduler jobs run for pilot users | 5 deferred-module job groups (Section 12 items 4 to 8) ungated in `processSlaAndEscalations` | 5.1 (CLOSED 2026-10-09 when `PILOT_MODE=true`; verified by tests) |
-| B3 | Complaint photos publicly readable, unvalidated content, local disk | `app.use('/uploads', express.static(...))` in `app.js` | 5.2 |
+| B3 | Complaint photos publicly readable, unvalidated content, local disk (PARTLY CLOSED 2026-10-15, DEC-034: extension now comes from the checked file type, every file under `/uploads` is served with a sandboxing Content-Security-Policy and `nosniff`. STILL OPEN: no authorization on `/uploads`, no magic-byte check, local disk) | `app.use('/uploads', express.static(...))` in `app.js` | 5.2 |
 | B4 | No password change or reset, demo credentials in seed | Backend (5.3a) and frontend screens (5.3b) DONE, tested and driven in a real browser 2026-10-10. STILL OPEN (5.3c): provisioning script, production seed guard, `audit-demo-credentials` script; `Password@123` is still in the seeds, and the public login page still shows a "Quick Demo Accounts" panel that prints it (D2 below) | 5.3 (mostly done) |
 | D1 | Admin console list pages crash (pre-existing at HEAD, found 2026-10-10) | Every `/api/admin/*` list endpoint returns a wrapped object (`{ users, total }`, `{ hostels }`, `{ departments }`, ...) but pages do `setX(res.data)` and then call `.filter` or `.map`. Fixed ONLY in `UserManagementPage.jsx` (needed for the reset button and for creating accounts). `HostelManagementPage` and `DepartmentManagementPage` have the same `setX(res.data)` pattern (verified by search); Block, Floor and Room pages were not inspected. Admin API tests pass because they never render the UI | Separate task, needs approval |
 | D3 | Staff dashboard and staff queue disagree (found 2026-10-10) | In the old staff UI the dashboard showed 0 active tickets while the queue listed 2 tasks. Cause not investigated. Not visible to pilot technicians because pilot mode forwards them to `/staff/jobs`, but it affects non-pilot use | Investigate when the old staff screens are next touched |
@@ -708,7 +743,13 @@ Frontend proxies `/api` to `http://localhost:5000` during development, so `VITE_
 | D5 | A warden without a `hostelId` sees every complaint (found 2026-10-10) | `getComplaints` in `complaint.service.js` scopes a warden by hostel only `if (requestingUser.hostelId)`; otherwise the filter stays empty. Fail-open. Also `assignComplaint` and `reassignComplaint` skip the hostel check when the warden has no hostel | Make a warden with no hostel see nothing (decision needed before wave 7) |
 | D6 | A technician is shown every complaint of their department, not only their own (found 2026-10-10) | `getComplaints` for HOSTEL_STAFF uses `assignedTo = me OR departmentId = my department`, which includes other technicians' jobs and other hostels' complaints with student names and rooms. The new "My jobs" screen filters to the technician's own jobs on the client, which is cosmetic, not a privacy control | Scope on the server by assignee (and hostel) before wave 7 |
 | D7 | Search text is used as an unescaped regular expression (found 2026-10-10) | `getComplaints` (`complaintId` and `title` search) and the admin user list pass the raw search string to `$regex`. A crafted pattern can hang the query (ReDoS) or match more than intended. The new warden people list escapes its input | Escape in those two places; small backend task |
-| D8 | Backend cannot start on a machine without `npm install` since commit `0bb4886` (found 2026-10-10) | `tesseract.js` and `pdf-parse` are declared but not installed locally, so `app.js` fails to load through `mess.service.js` and `ocr.service.js`. Not a code defect; an environment gap that blocks every backend test on this machine | Run `npm install` in `backend` |
+| D8 | Backend cannot start on a machine without `npm install` since commit `0bb4886`; also needs `nodemailer` since the OTP commits (found 2026-10-10) | `tesseract.js` and `pdf-parse` are declared but not installed locally, so `app.js` fails to load through `mess.service.js` and `ocr.service.js`. Not a code defect; an environment gap that blocks every backend test on this machine | Run `npm install` in `backend` |
+| D9 | Registration codes are stored as plain text (found 2026-10-15) | `Otp.otp` holds the code itself for 5 minutes. A database leak in that window exposes live codes | Store a keyed hash and compare in constant time (task 5.12) |
+| D10 | `registerUser` skips the code check when `NODE_ENV=test` (found 2026-10-15) | A test-only branch in production code; about 29 test registrations in 4 test files rely on it | Replace with a shared test helper that requests and verifies a code, then remove the branch (task 5.12) |
+| D11 | `send-otp` reveals whether an account exists and has no per-email limit (found 2026-10-15) | The reply carries `isExisting`; only the IP limiter slows repeated sends to one address, so a BBDU address can be mail-bombed | Drop `isExisting` from the reply and add a per-email cooldown (task 5.12) |
+| D12 | Replacing or deleting a room media item leaves the file on disk (found 2026-10-15) | `deleteRoomMediaItem` and `removePhoto` only change the room record | Delete the file when no room still points at it; destructive, so only after a backup rule exists (task 5.12) |
+| D13 | Mess and Virtual Visit pages are English-only, dense and full of emoji (found 2026-10-15) | Hundreds of hard-coded English strings, 28 emoji on the Virtual Visit page, wide tables; only the colour and the header lines were aligned | Phone-first redesign with Hindi and icons (task 5.14) |
+| D14 | Older admin pages are still indigo and were not checked under the Poppins font (found 2026-10-15) | Finance, assets, maintenance, admin and other pages; pilot users never reach them | Align in the all-roles wave (7) |
 | D2 | Login page shows demo accounts and the shared password | `LoginPage.jsx` renders "Quick Demo Accounts (Password: Password@123)" buttons to anyone, including in production builds | Gate behind a non-pilot flag or remove (Go-Live Gate item 4); small frontend task |
 | B5 | No hosting, HTTPS, backups, or restore test | Go-Live Gate items 1 and 2 not started | 5.4 |
 | B6 | Pilot metrics cannot be produced on demand | no TTA/TTR/completion report endpoint or script | 5.5 |
@@ -746,6 +787,7 @@ Frontend proxies `/api` to `http://localhost:5000` during development, so `VITE_
 | 2026-10-09 | Pilot Phase 3 | End-to-end runtime verification of full 12-step complaint loop across Student, Warden, and Staff personas (verify-pilot-complaint-loop.mjs); calibrated centralized auth rate limiter (DEC-018) |
 | 2026-10-09 | Pilot Phase 4 | Provisioned dedicated pilot cohort seeder (seed-pilot-cohort.mjs) and aligned 7 facility maintenance departments in seed.js (DEC-019) |
 | 2026-10-09 | Phase 5 task 5.1 | Implemented backend `PILOT_MODE` gating (DEC-020): `env.PILOT_MODE`, pilot branch in `processSlaAndEscalations` (no escalation, hostel-warden-only breach and unassigned-reminder notices, deferred jobs 4 to 8 skipped), scheduler reads the flag and logs the mode, `.env.example` documented, new suite `tests/pilotGating.test.js` (7 tests). Files: `config/env.js`, `services/sla.service.js`, `scheduler/slaScheduler.js`, `.env.example`. VERIFIED: new suite 7 of 7 pass; full `npm test` 277 of 277 pass, 0 skipped, run against a temporary MongoDB (mongodb-memory-server installed in a scratch folder outside the project and deleted afterwards; Atlas deliberately never used because suites call `dropDatabase()`). NOT VERIFIED: `npm run build` (no frontend change made) and the live-server loop script. Follow-up: set `PILOT_MODE=true` on the pilot deployment (Go-Live Gate item 6); consider a fail-closed production default in Phase 7. Also closes blocker B7 for the backend. |
+| 2026-10-15 | Merge review, step 5 of 5 (documentation, DEC-034, DEC-035) | Documentation made to match the code after the second developer's 15 commits and the five fixes: sections 4.21 (email code registration) and 4.22 (room virtual visit) added, model count 38 with the Otp row, service count 17 with `email.service.js` and `ocr.service.js`, route and page tables extended, test list completed (counts read from disk), blocker B3 marked partly closed, defects D9 to D14 and open questions Q8 and Q9 recorded, roadmap tasks 5.12 to 5.14 added, DEC-034 closed and DEC-035 (student sign-in without the IT office) proposed. `architecture.md` and `README.md` updated. VERIFIED: no code changed in this step; counts of files read from the directories; last full test figures are those of step 2 (backend 340 tests, 339 pass, 1 environment failure) and step 4 (frontend 48 of 48). NOT verified: anything in a real inbox or on a real phone. |
 | 2026-10-15 | Merge review, step 4 of 5 (theme and register form, DEC-034) | `pages/RegisterPage.jsx` rebuilt: student-only, English and Hindi, large inputs, orange field errors, bottom sheet for the code with a resend timer; behaviour unchanged (hostel, block and floor loading, validation, send, resend, register); false "will update your password" text and Hinglish removed. 54 new dictionary keys per language (`reg.*`, `otp.*`, `problem.open`). Recolour by class swap (indigo and purple to brand) in `pages/virtualVisit/VirtualVisitPage.jsx`, `components/virtualVisit/RoomDetailsModal.jsx`, `PanoramaViewer.jsx`, `pages/mess/MessDashboardPage.jsx` and `WeeklyMenuUploadModal.jsx` (273 classes); `services/email.service.js` OTP email now brand red; photo link label and Virtual Visit header lines translated. VERIFIED: `npm run build` passes, `npm test` 48 of 48; backend registration, OTP and hostel allocation test files 47 of 47; in the browser at 375 px on a throwaway database: register page in Hindi, empty-form errors (8 orange fields and the summary line), a full registration (form, code sheet with the development code banner, code entry) ending on the new student's Home as "Room 215, Block 1", Virtual Visit and Mess pages in the student shell in the new colours. NOT verified: the OTP email as received (needs `nodemailer` installed and a mail account), the register page in English and at desktop width, Mess and Virtual Visit in Warden role after the recolour. FOLLOW-UP: translate and redesign Mess and Virtual Visit for phones (hundreds of English strings, 28 emoji), native Hindi review of the 54 + 7 + 11 new keys, the older admin pages still indigo. |
 | 2026-10-15 | Merge review, step 3 of 5 (pilot layouts and Home, DEC-034) | `routes/AppRoutes.jsx`: `/mess` and `/virtual-visit` moved out of the dashboard group into one group with `RoleAwareLayout` (student shell for students, Warden shell for Wardens, dashboard for others and for non-pilot builds); `layouts/StudentPilotLayout.jsx` and `WardenPilotLayout.jsx` use a wider column and padding on those two paths; `layouts/PilotShell.jsx` smaller tab labels when there are more than three tabs; Warden tabs are Problems, People, Rooms, Mess; `pages/student/StudentHomePage.jsx` replaces the two large blocks with a compact "More for you" row, the menu now comes from the student's own hostel; `utils/studentPresentation.js` `pickMeal` (3 tests); `pages/warden/WardenProblemsPage.jsx` loses the dark media studio banner; 7 dictionary keys per language (`home.more`, `home.vv.sub`, `meal.*`, `nav.rooms`). VERIFIED: `npm run build` passes, `npm test` 48 of 48; driven in the browser at 375 px on a throwaway database: student Home in Hindi (new row with the real menu), student Mess and Virtual Visit inside the student shell with the Mess tab active, Warden Problems (task-first again, four tabs fit), Warden Mess inside the Warden shell. NOT verified: the pages at desktop width, the Rooms tab as a Warden with showcase rooms (the throwaway database has none), technician access. FOLLOW-UP: step 4 (theme and OTP email colours, register form rebuild, English strings in the new pages), Mess page redesign for phones. |
 | 2026-10-15 | Merge review, step 2 of 5 (upload safety and room scope, DEC-034) | Fixed: saved file extensions now come from the checked file type in all three uploads (`middleware/upload.js`, `roomMediaUpload.js`, `menuUpload.js`, helper `utils/uploadFiles.js`); every file under `/uploads` is served with a sandboxing Content-Security-Policy and `nosniff` (`app.js`); room media upload, delete and edit require the room to be in the Warden's own hostel, Super Admin any room, inactive rooms are not found (`controllers/virtualVisit.controller.js`); media links can only be files this server stored, description and facilities are length-limited, refused uploads delete their files, unknown media type is a 400; `components/ApiStatus.jsx` restored to the honest version. Tests: `tests/uploadFiles.test.js` (5), `tests/virtualVisitScope.test.js` (12), `29b` in `tests/complaint.test.js`. VERIFIED: full backend suite 340 tests, 339 pass, on a throwaway MongoDB with `nodemailer` and `tesseract.js` stubbed; the one failure is the same weekly menu OCR test at the same line (missing packages, environment gap); frontend `npm run build` passes and `npm test` 45 of 45; no stray test files left in `uploads`. NOT verified: the media studio screens in a browser, real video uploads. FOLLOW-UP: steps 3 to 5 (pilot layouts and Home blocks, theme and OTP email colours, register form rebuild); deleting a media item does not yet delete the file from disk. |
@@ -930,6 +972,9 @@ Frontend pilot navigation scoping (DEC-017), core complaint screen streamlining,
   | 5.9 | Re-run full `npm test` and `npm run build` against MongoDB, update Section 2 and Section 9 with executed numbers, run `verify-pilot-complaint-loop.mjs` against the deployed host | B7 | |
   | 5.10 | Pilot runbook, onboarding sheets per role, resident data notice, data authorization confirmation from the university | Gate item 9 | Non-code deliverables |
   | 5.11 | Plain-language pilot UX for technicians and Wardens (DEC-026, DEC-027, DEC-029, DEC-030). All BUILD work done 2026-10-10; U5 (real-user test) and Hindi review remain. U1 word list (DONE, approved by the user 2026-10-10), U2 technician screens (DONE 2026-10-10), U3 Warden home, assign and People screens plus translated Login and Change password (DONE 2026-10-10), U4 plain-language and Hindi notifications for Warden and technician (DONE 2026-10-10), S0 Zomato-style cherry-red design and the student screens (DONE 2026-10-10, DEC-031; technician and Warden restyle still to do), U5 real-user test with the Warden and one technician, then fix what it shows (open, needs the user) | Risks R2, R3 | The Hindi is a DRAFT until a native speaker reviews it. A "Can't finish, need help" action was considered and deliberately left out by the user |
+  | 5.12 | Follow-ups of the merge review (DEC-034): hash registration codes (D9), remove the `NODE_ENV=test` code bypass behind a test helper (D10), drop `isExisting` and add a per-email resend cooldown (D11), delete replaced room media files (D12), install `nodemailer`, set a mail account and read a real email, then run the full backend suite on a machine with all packages | Risk register unchanged | Needs `npm install` (a download) and a Gmail App Password or university SMTP account; email volume limit is open question Q8 |
+  | 5.13 | Student sign-in without the IT office (DEC-035, PROPOSED): "Sign in with Google" restricted to `@bbdu.ac.in`, the Gmail code stays as the fallback | Risk register unchanged | The user must create the Google Cloud OAuth client (about 15 minutes) and test with one real student account first; it can still be blocked by a university Workspace policy |
+  | 5.14 | Phone-first Mess and Virtual Visit: Hindi, icons instead of emoji, cards instead of wide tables, native Hindi review of all new keys | Risk register unchanged | D13; the Hindi stays a draft until a native speaker reviews it (Q6) |
 - **Exit gate**: Go-Live Readiness Gate items 1 to 10 are all green and the Warden agrees to start.
 - **Risks**: Hosting or university approvals delay the start (R6, R7). Mitigation: start 5.4 and 5.10 first because they depend on other parties.
 
@@ -1007,3 +1052,5 @@ Each wave records an evidence gate (what pilot or operating data must justify it
 | Q5 | RESOLVED 2026-10-09: jobs 3 (work order SLA) and 9 (student services lifecycle) keep running in pilot mode. Reason: they only act on work orders and scheduled notices, which the pilot never creates, so gating them adds code and risk for no benefit. Revisit if the Warden starts using notices. | 5.1 (done) |
 | Q6 | PARTLY ANSWERED 2026-10-10: Hindi plus English toggle for the technician screens. Still open: Warden and student screens, and who reviews the Hindi wording | 5.11 |
 | Q7 | Who is the university sponsor who can sign the data authorization and, later, the escalation jurisdiction matrix? | gate item 9, wave 7 |
+| Q8 | Which mailbox sends the registration codes, and how many students will register in the first week? A free Gmail account has a daily sending limit (500 a day is widely reported but is not confirmed by Google; Google Workspace is 2,000 a day per Google), so campus-wide registration may need a university mail account | 5.12, 5.8 |
+| Q9 | May students sign in with their university Google account through an app created by the project team (DEC-035)? Only a real student account can show whether the university's Google Workspace settings allow it | 5.13 |

@@ -462,7 +462,7 @@
 
 ### DEC-034: Review of the Merged Work From the Second Developer, and Its Security Fixes
 - **Date**: 2026-10-15
-- **Status**: Accepted; steps 1 to 4 done (security; upload safety and room scope; layouts and Home; theme and register form). Step 5 (final docs and the follow-up list) remains.
+- **Status**: Accepted and complete (five steps, 2026-10-15). Open follow-ups are tracked as tasks 5.12 to 5.14 and defects D9 to D14 in `report.md`.
 - **Context**: A second developer pushed 15 commits (email OTP registration, photo attachments, Mess and Virtual Visit entries, a rewritten register page, dev tooling). The merged tree built and its tests passed, so it was reviewed line by line against `decision.md`. Findings that break recorded decisions or open a security hole were fixed before anything is deployed; the features themselves are kept.
 - **Alternatives Considered**:
   - *Alternative A: Merge as is*: Fast, but ships an account takeover, a public path to a Warden account and an open CORS policy.
@@ -491,6 +491,21 @@
 - **Consequences (step 4)**: The Virtual Visit and Mess pages still hold hundreds of English-only strings and 28 emoji on the Virtual Visit page alone; translating and redesigning them for a phone is a separate task and needs the Hindi review. Wide tables on the Mess page remain dense on a phone. The register form sends the role `STUDENT` explicitly; the server ignores any other value. New dictionary keys: 54 per language (`reg.*`, `otp.*`, `problem.open`).
 - **Consequences**: The photo attachment blocks the second developer added to the problem screens stay. The Mess and Virtual Visit pages themselves are unchanged inside their shells, so they are still English-only and indigo until step 4. The Mess page is wide and dense for a phone; it works but is not yet redesigned. A technician opening `/mess` still gets the dashboard shell; the pilot gives technicians no link to it.
 - **Consequences (earlier steps)**: A genuine returning student re-registers only with the same email. Wardens are created by an administrator, as before. Tests: Warden registration test changed to assert refusal; 10 new tests in step 1 (6 CORS, takeover, attempt lock, production exposure, escaping) and 18 in step 2 (5 upload helper, 12 room scope and safe upload, 1 complaint photo extension). Files already stored with the old names keep working; only new uploads are renamed by type, and the seeded `.svg` room pictures still pass the media URL check. Not done in this step and tracked as follow-ups: OTP stored as plain text (5 minute TTL), `isExisting` in the send-otp reply reveals whether an account exists, the `NODE_ENV=test` OTP bypass inside `registerUser`, and the three scope and layout issues in later steps. Email sending needs the new `nodemailer` package installed (`npm install` in `backend`) and `EMAIL_USER` and `EMAIL_PASS` set; until then production returns 503 and development prints the code.
+
+- **Follow-ups left open on purpose**: hashing the registration codes, removing the `NODE_ENV=test` bypass, the per-email resend limit, deleting replaced room media files, a phone-first Mess and Virtual Visit with Hindi, and the older admin pages. Each needs either a download, a decision, or a larger redesign than a review should carry.
+
+---
+
+### DEC-035: Student Sign-In With Google Instead of Depending on the IT Office (PROPOSED)
+- **Date**: 2026-10-15
+- **Status**: Proposed (needs the owner's go-ahead and one real-student test; not built)
+- **Context**: Registration needs a verified university email. The IT office will not set anything up, so a university SMTP account or a university-created sign-in client cannot be assumed. DNS shows `bbdu.ac.in` mail runs on Google Workspace, so every student has a Google account. Google lets anyone create an OAuth client for a project with an "External" consent screen; an app that asks only for basic identity (openid, email, profile) should avoid the unverified-app screen and the 100-user cap, but the search results did not name those scopes explicitly, so it must be tested.
+- **Alternatives Considered**:
+  - *Alternative A: Email codes through a dedicated Gmail account (built, DEC-034)*: Works today with no IT, but is limited by Gmail sending limits, depends on spam folders, and needs a password to be kept safe.
+  - *Alternative B: A university SMTP or Workspace mailbox*: Better deliverability and limits (2,000 a day per Google), but needs the IT office.
+  - *Alternative C: "Sign in with Google" restricted to `@bbdu.ac.in` (Proposed)*: No code email and no sending limit; the university has already proved who the student is. The server verifies Google's ID token and the `@bbdu.ac.in` domain; the student still chooses hostel, block and room once. Wardens and technicians keep password login.
+- **Rationale**: C removes the email delivery problem and most student password handling, and needs only a Google Cloud project the project team can create. A stays as the fallback, because a Workspace admin can switch off third-party sign-in for the whole domain (off by default, per Google), which only a real student account can reveal.
+- **Consequences**: The owner creates the OAuth client (Client ID is public, no secret is needed for this flow) and tests one real student account first. New backend endpoint, a button on login and register, token verification, linking to an existing record by email, and tests. If the university blocks it, nothing is lost: the email code route keeps working. Recorded as task 5.13 and open question Q9.
 
 ---
 

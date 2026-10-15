@@ -40,7 +40,7 @@ The platform enforces five strictly bounded system roles across backend middlewa
 
 ### Security Model:
 - **Strict Role Boundaries**: Students are strictly forbidden from creating, modifying, reassigning, or completing work orders.
-- **No Privilege Escalation**: Public registration (`POST /api/auth/register`) permits only `STUDENT` accounts.
+- **No Privilege Escalation**: Public registration (`POST /api/auth/register`) permits only `STUDENT` accounts, and needs a 6-digit code emailed to the student's `@bbdu.ac.in` address (`POST /api/auth/send-otp`, `POST /api/auth/verify-otp`). Wardens, technicians, authority and admins are created by an administrator.
 - **Zero Leakage**: `passwordHash` is `select: false` at schema level and stripped during serialization.
 - **Stateless Tokens**: JWTs contain minimal claims (`userId`, `role`) signed using `JWT_SECRET`.
 
@@ -255,7 +255,7 @@ npm run seed
 | :--- | :--- | :--- |
 | `/` | Public | Landing page |
 | `/login` | Public | Role-based login |
-| `/register` | Public | Student registration |
+| `/register` | Public | Student registration with an emailed 6-digit code (English and Hindi) |
 | `/student/*` | `STUDENT` | Resident portal & complaint tracking |
 | `/warden/*` | `WARDEN` | Hostel management, triage & analytics |
 | `/staff/*` | `HOSTEL_STAFF` | Technician queue & complaint execution |
@@ -268,6 +268,7 @@ npm run seed
 | `/maintenance` | Staff, Warden, Authority, Admin | Preventive maintenance dashboard, upcoming/overdue tabs & plan wizard |
 | `/maintenance/plans/:id` | Staff, Warden, Authority, Admin | Maintenance plan detail, pause/resume/deactivate controls & cycle timeline |
 | `/mess` | Student, Staff, Warden, Authority, Admin | Mess & dining dashboard, today's meals, student ratings, hygiene metrics & notices |
+| `/virtual-visit` | Student, Staff, Warden, Authority, Admin | Read-only room tours (photos, short videos, live bed availability); a Warden manages the media of rooms in their own hostel |
 | `/cleaning` | Staff, Warden, Authority, Admin | Cleaning & Housekeeping dashboard, checklist executor, supervisor verification & area registry |
 | `/outpass` | Student, Staff, Warden, Authority, Admin | Visitor & Outpass dashboard, digital passes, QR gate verifier, overdue monitor & visitor log |
 | `/ai-command-center` | Warden, Authority, Admin | AI Hostel Command Center: transparent health score (0-100), explainable breakdown, live operational assistant, ranked advisory recommendations, risk matrix |
