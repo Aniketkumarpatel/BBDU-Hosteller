@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { ROLES, ROLE_VALUES } from '../constants/roles.js';
 
-// Public self-registration allows STUDENT and WARDEN roles with email OTP verification.
-// SUPER_ADMIN and AUTHORITY can NEVER be registered through public endpoints.
-const PUBLIC_ALLOWED_ROLES = [ROLES.STUDENT, ROLES.WARDEN];
+// Public self-registration allows only the STUDENT role, with email OTP verification.
+// WARDEN, HOSTEL_STAFF, AUTHORITY and SUPER_ADMIN can NEVER be registered through public endpoints.
+const PUBLIC_ALLOWED_ROLES = [ROLES.STUDENT];
 
 const objectIdRegex = /^[0-9a-fA-F]{24}$/;
 
@@ -58,7 +58,7 @@ export const sendOtpSchema = z.object({
     .refine(
       (role) => PUBLIC_ALLOWED_ROLES.includes(role),
       {
-        message: 'Self-registration OTP is restricted to STUDENT and WARDEN accounts.',
+        message: 'Self-registration OTP is restricted to STUDENT accounts.',
       }
     ),
   name: z.string().trim().max(120).optional(),
@@ -105,7 +105,7 @@ export const registerSchema = z.object({
     .refine(
       (role) => PUBLIC_ALLOWED_ROLES.includes(role),
       {
-        message: 'Public self-registration is restricted to STUDENT and WARDEN accounts. Administrative roles must be provisioned by a SUPER_ADMIN.',
+        message: 'Public self-registration is restricted to STUDENT accounts. Administrative roles must be provisioned by a SUPER_ADMIN.',
       }
     ),
   phone: z

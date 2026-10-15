@@ -269,14 +269,14 @@ test('5. Public registration rejects privilege escalation (SUPER_ADMIN, AUTHORIT
   }
 });
 
-test('5b. Registration Email OTP flow: send-otp, verify-otp, and warden registration', async () => {
+test('5b. Registration Email OTP flow: send-otp and verify-otp work, and public Warden registration is refused', async () => {
   // 1. Send OTP to university email
   const sendRes = await fetch(`${baseUrl}/api/auth/send-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: 'newwarden@bbdu.ac.in',
-      role: 'WARDEN',
+      role: 'STUDENT',
       name: 'Hostel Warden Test',
     }),
   });
@@ -311,7 +311,7 @@ test('5b. Registration Email OTP flow: send-otp, verify-otp, and warden registra
   const goodVerifyBody = await goodVerifyRes.json();
   assert.equal(goodVerifyBody.success, true);
 
-  // 4. Register WARDEN successfully
+  // 4. A Warden account can never be created through public registration, even with a verified email
   const wardenRegRes = await fetch(`${baseUrl}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -325,12 +325,11 @@ test('5b. Registration Email OTP flow: send-otp, verify-otp, and warden registra
       otp,
     }),
   });
-  assert.equal(wardenRegRes.status, 201);
+  assert.equal(wardenRegRes.status, 400);
   const wardenRegBody = await wardenRegRes.json();
-  assert.equal(wardenRegBody.success, true);
-  assert.equal(wardenRegBody.data.user.role, 'WARDEN');
-  assert.equal(wardenRegBody.data.user.email, 'newwarden@bbdu.ac.in');
-  assert.equal(wardenRegBody.data.user.isEmailVerified, true);
+  assert.equal(wardenRegBody.success, false);
+  assert.match(wardenRegBody.message, /STUDENT/);
+  assert.equal(await User.findOne({ email: 'newwarden@bbdu.ac.in' }), null);
 });
 
 test('6. Login with correct credentials returns safe user and valid JWT', async () => {

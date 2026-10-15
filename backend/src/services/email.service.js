@@ -1,6 +1,15 @@
 import nodemailer from 'nodemailer';
 import ApiError from '../utils/ApiError.js';
 
+/** Escape text that came from a user before it is placed inside an HTML email. */
+const escapeHtml = (value) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 let cachedTransporter = null;
 let lastUser = null;
 let lastPass = null;
@@ -31,7 +40,6 @@ export function getTransporter() {
         port,
         secure: process.env.SMTP_SECURE === 'true' || port === 465,
         auth: { user, pass },
-        tls: { rejectUnauthorized: false },
       });
       console.log(`[EmailService] Configured custom SMTP transporter: ${host}:${port} (${user})`);
     } else {
@@ -41,7 +49,6 @@ export function getTransporter() {
         port: 465,
         secure: true,
         auth: { user, pass },
-        tls: { rejectUnauthorized: false },
       });
       console.log(`[EmailService] Configured Gmail SMTP transporter for: ${user}`);
     }
@@ -59,7 +66,7 @@ export function getTransporter() {
 /**
  * Generate standard HTML email body for Registration OTP verification.
  */
-function buildOtpEmailHtml({ name, otp, role, expiresMinutes = 5 }) {
+export function buildOtpEmailHtml({ name, otp, role, expiresMinutes = 5 }) {
   const roleDisplay = role === 'WARDEN' ? 'Hostel Warden' : 'Student Resident';
 
   return `
@@ -94,7 +101,7 @@ function buildOtpEmailHtml({ name, otp, role, expiresMinutes = 5 }) {
                 Email Verification Code
               </h2>
               <p style="margin: 0 0 16px; font-size: 15px; line-height: 1.6; color: #475569;">
-                Hello <strong>${name ? name : 'there'}</strong>,
+                Hello <strong>${name ? escapeHtml(name) : 'there'}</strong>,
               </p>
               <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.6; color: #475569;">
                 You are registering as a <strong>${roleDisplay}</strong> on the official BBDU Hosteller platform. Please use the One-Time Password (OTP) below to complete your email verification and confirm your account:
@@ -169,14 +176,18 @@ export async function sendRegistrationOtpEmail({ email, otp, name = '', role = '
   const html = buildOtpEmailHtml({ name, otp, role, expiresMinutes: 5 });
   const text = `Hello ${name || 'User'},\n\nYour BBDU Hosteller verification code is: ${otp}\nRole: ${role === 'WARDEN' ? 'Hostel Warden' : 'Student Resident'}\nValid for 5 minutes.\nDo not share this OTP with anyone.\n\nBBDU Hostel Administration`;
 
-  // Always log OTP to backend console for developer and admin convenience
-  console.log('\n================================================================');
-  console.log(`[BBDU HOSTELLER EMAIL SERVICE - REGISTRATION OTP]`);
-  console.log(`Recipient: ${email}`);
-  console.log(`Role:      ${role}`);
-  console.log(`OTP Code:  ${otp}`);
-  console.log(`Expires:   5 minutes`);
-  console.log('================================================================\n');
+  // The code is printed and returned to the caller only outside production, so a missing mail
+  // setup can never hand a working code to whoever asks for it.
+  const exposeOtp = process.env.NODE_ENV !== 'production';
+  if (exposeOtp) {
+    console.log('\n================================================================');
+    console.log(`[BBDU HOSTELLER EMAIL SERVICE - REGISTRATION OTP]`);
+    console.log(`Recipient: ${email}`);
+    console.log(`Role:      ${role}`);
+    console.log(`OTP Code:  ${otp}`);
+    console.log(`Expires:   5 minutes`);
+    console.log('================================================================\n');
+  }
 
   if (mailTransporter) {
     try {
@@ -196,15 +207,25 @@ export async function sendRegistrationOtpEmail({ email, otp, name = '', role = '
       };
     } catch (err) {
       console.error(`\n[EmailService] ❌ Error dispatching mail via Gmail/SMTP to ${email}:`, err.message);
-      let userMsg = `Failed to send email to ${email}. ${err.message}`;
-      if (err.message.includes('Username and Password not accepted') || err.message.includes('BadCredentials')) {
-        userMsg = 'Gmail authentication failed: Please check your Google 16-character App Password in backend/.env (not regular Gmail password).';
+      // Mail server details stay in the log; only a development caller sees the reason
+      let userMsg = 'We could not send the verification email. Please try again in a few minutes.';
+      if (exposeOtp) {
+        userMsg = `Failed to send email to ${email}. ${err.message}`;
+        if (err.message.includes('Username and Password not accepted') || err.message.includes('BadCredentials')) {
+          userMsg = 'Gmail authentication failed: Please check your Google 16-character App Password in backend/.env (not regular Gmail password).';
+        }
       }
       throw new ApiError(500, userMsg);
     }
   }
 
-  // If no SMTP configured in backend/.env:
+  // No mail account is configured. In production this is an error, never a silent fallback
+  // that would let a caller verify an email address they do not own.
+  if (!exposeOtp) {
+    console.error('[EmailService] EMAIL_USER and EMAIL_PASS are not set; cannot send verification emails in production.');
+    throw new ApiError(503, 'Email verification is temporarily unavailable. Please contact the hostel office.');
+  }
+
   console.log(`\n================================================================`);
   console.log(`[EmailService] ⚠️ GMAIL SMTP CREDENTIALS NOT CONFIGURED in backend/.env`);
   console.log(`[EmailService] To send real OTP emails directly to ${email}:`);

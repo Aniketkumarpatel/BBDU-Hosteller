@@ -188,8 +188,8 @@ test('4. Full Student registration with verified OTP succeeds and marks email ve
   assert.equal(remainingOtp, null);
 });
 
-test('5. Full Warden registration with OTP email verification succeeds', async () => {
-  // Request OTP for Warden
+test('5. Public Warden registration is refused: no OTP for a Warden and no Warden account is created', async () => {
+  // A Warden OTP cannot be requested through the public endpoint
   const sendRes = await fetch(`${baseUrl}/api/auth/send-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -199,12 +199,17 @@ test('5. Full Warden registration with OTP email verification succeeds', async (
       name: 'Dr. Suresh Kumar',
     }),
   });
+  assert.equal(sendRes.status, 400);
 
-  assert.equal(sendRes.status, 200);
-  const sendData = await sendRes.json();
-  const wardenOtp = sendData.data.previewOtp;
+  // Even with a genuine verified email, registering as Warden is refused
+  const studentOtpRes = await fetch(`${baseUrl}/api/auth/send-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'warden.official@bbdu.ac.in', role: 'STUDENT' }),
+  });
+  assert.equal(studentOtpRes.status, 200);
+  const otp = (await studentOtpRes.json()).data.previewOtp;
 
-  // Complete Warden registration with OTP
   const regRes = await fetch(`${baseUrl}/api/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -216,18 +221,11 @@ test('5. Full Warden registration with OTP email verification succeeds', async (
       password: 'Password@123',
       role: 'WARDEN',
       hostelId: String(testHostel._id),
-      otp: wardenOtp,
+      otp,
     }),
   });
-
-  assert.equal(regRes.status, 201);
-  const regData = await regRes.json();
-  assert.equal(regData.success, true);
-  assert.equal(regData.data.user.role, 'WARDEN');
-  assert.equal(regData.data.user.email, 'warden.official@bbdu.ac.in');
-  assert.equal(regData.data.user.employeeId, 'EMP-WARDEN-001');
-  assert.equal(regData.data.user.isEmailVerified, true);
-  assert.ok(regData.data.token);
+  assert.equal(regRes.status, 400);
+  assert.equal(await User.findOne({ email: 'warden.official@bbdu.ac.in' }), null);
 });
 
 test('6. Sending OTP for an already registered active email succeeds and allows re-registration update', async () => {
@@ -266,4 +264,115 @@ test('6. Sending OTP for an already registered active email succeeds and allows 
   const regData = await regRes.json();
   assert.equal(regData.success, true);
   assert.equal(regData.data.user.name, 'Rohan Sharma Updated');
+});
+
+test('7. A verified email cannot take over another student account through their Student ID', async () => {
+  // student.otp@bbdu.ac.in already owns Student ID BBDU2026-OTP-1 (created in test 4)
+  const before = await User.findOne({ email: 'student.otp@bbdu.ac.in' });
+  assert.ok(before);
+
+  const sendRes = await fetch(`${baseUrl}/api/auth/send-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'attacker.otp@bbdu.ac.in', role: 'STUDENT' }),
+  });
+  assert.equal(sendRes.status, 200);
+  const otp = (await sendRes.json()).data.previewOtp;
+
+  const regRes = await fetch(`${baseUrl}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: 'Not The Owner',
+      email: 'attacker.otp@bbdu.ac.in',
+      studentId: 'BBDU2026-OTP-1',
+      password: 'Password@123',
+      role: 'STUDENT',
+      hostelId: String(testHostel._id),
+      blockId: String(testBlock._id),
+      floorId: String(testFloor._id),
+      roomNumber: '102',
+      otp,
+    }),
+  });
+  assert.equal(regRes.status, 409);
+  const body = await regRes.json();
+  assert.equal(body.success, false);
+  assert.equal(body.data?.token, undefined);
+
+  // The owner's record is exactly as it was: same email, same name, same room
+  const after = await User.findOne({ studentId: 'BBDU2026-OTP-1' });
+  assert.equal(after.email, before.email);
+  assert.equal(after.name, before.name);
+  assert.equal(String(after.roomId), String(before.roomId));
+  assert.equal(await User.findOne({ email: 'attacker.otp@bbdu.ac.in' }), null);
+});
+
+test('8. Wrong codes sent straight to /register are counted and the code is locked after 5 tries', async () => {
+  const sendRes = await fetch(`${baseUrl}/api/auth/send-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'guesser.otp@bbdu.ac.in', role: 'STUDENT' }),
+  });
+  const realOtp = (await sendRes.json()).data.previewOtp;
+  const wrongOtp = realOtp === '000000' ? '111111' : '000000';
+
+  const attempt = (code) =>
+    fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Guesser',
+        email: 'guesser.otp@bbdu.ac.in',
+        studentId: 'BBDU2026-OTP-9',
+        password: 'Password@123',
+        role: 'STUDENT',
+        hostelId: String(testHostel._id),
+        blockId: String(testBlock._id),
+        floorId: String(testFloor._id),
+        roomNumber: '103',
+        otp: code,
+      }),
+    });
+
+  for (let i = 0; i < 5; i += 1) {
+    assert.equal((await attempt(wrongOtp)).status, 400);
+  }
+  // Now even the real code is refused, because the code was locked and removed
+  assert.equal((await attempt(realOtp)).status, 400);
+  assert.equal(await User.findOne({ email: 'guesser.otp@bbdu.ac.in' }), null);
+});
+
+test('9. In production a missing mail setup is an error and never hands back a working code', async () => {
+  const { sendRegistrationOtpEmail } = await import('../src/services/email.service.js');
+  const keys = ['EMAIL_USER', 'EMAIL_PASS', 'SMTP_USER', 'SMTP_PASS'];
+  const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  const savedNodeEnv = process.env.NODE_ENV;
+  try {
+    for (const k of keys) delete process.env[k];
+
+    process.env.NODE_ENV = 'production';
+    await assert.rejects(
+      () => sendRegistrationOtpEmail({ email: 'someone@bbdu.ac.in', otp: '123456' }),
+      (err) => err.statusCode === 503 && !String(err.message).includes('123456')
+    );
+
+    process.env.NODE_ENV = 'test';
+    const result = await sendRegistrationOtpEmail({ email: 'someone@bbdu.ac.in', otp: '123456' });
+    assert.equal(result.previewOtp, '123456');
+  } finally {
+    process.env.NODE_ENV = savedNodeEnv;
+    for (const k of keys) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+  }
+});
+
+test('10. The name typed by a user is escaped in the verification email', async () => {
+  const { buildOtpEmailHtml } = await import('../src/services/email.service.js');
+  const html = buildOtpEmailHtml({ name: '<a href="https://evil.example">Click</a><script>x()</script>', otp: '123456', role: 'STUDENT' });
+  assert.ok(!html.includes('<script>'));
+  assert.ok(!html.includes('<a href="https://evil.example">'));
+  assert.ok(html.includes('&lt;script&gt;'));
 });

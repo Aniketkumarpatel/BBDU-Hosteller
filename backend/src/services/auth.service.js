@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Hostel from '../models/Hostel.js';
@@ -192,7 +193,7 @@ export const getPublicRooms = async (floorId) => {
 /**
  * Send an email verification OTP for self-registration.
  */
-export const sendRegistrationOtp = async ({ email, role = ROLES.STUDENT, name = '' }) => {
+export const sendRegistrationOtp = async ({ email, name = '' }) => {
   const normalizedEmail = (email || '').trim().toLowerCase();
   if (!normalizedEmail || !normalizedEmail.includes('@')) {
     throw ApiError.badRequest('Please provide a valid email address.');
@@ -207,8 +208,8 @@ export const sendRegistrationOtp = async ({ email, role = ROLES.STUDENT, name = 
   const existingUser = await User.findOne({ email: normalizedEmail });
   const isExisting = Boolean(existingUser && existingUser.isActive);
 
-  // Generate 6-digit numeric OTP code
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // Generate a 6-digit numeric OTP code with a cryptographically secure generator
+  const otp = String(randomInt(100000, 1000000));
 
   // Clean up any stale registration OTPs for this email
   await Otp.deleteMany({ email: normalizedEmail, purpose: 'REGISTRATION' });
@@ -217,7 +218,7 @@ export const sendRegistrationOtp = async ({ email, role = ROLES.STUDENT, name = 
   await Otp.create({
     email: normalizedEmail,
     otp,
-    role,
+    role: ROLES.STUDENT,
     purpose: 'REGISTRATION',
     expiresAt: new Date(Date.now() + 5 * 60 * 1000),
   });
@@ -227,7 +228,7 @@ export const sendRegistrationOtp = async ({ email, role = ROLES.STUDENT, name = 
     email: normalizedEmail,
     otp,
     name,
-    role,
+    role: ROLES.STUDENT,
   });
 
   return {
@@ -235,7 +236,7 @@ export const sendRegistrationOtp = async ({ email, role = ROLES.STUDENT, name = 
     delivered: Boolean(sendResult.delivered),
     simulated: Boolean(sendResult.simulated),
     message: sendResult.delivered
-      ? `Verification code sent to your Gmail (${normalizedEmail}). Please check your inbox and spam folder.`
+      ? `Verification code sent to ${normalizedEmail}. Please check your inbox and spam folder.`
       : (isExisting
           ? `Verification code generated for ${normalizedEmail}. (Existing account: verifying OTP will update your profile).`
           : `Verification code generated for ${normalizedEmail}. Please check your inbox.`),
@@ -281,9 +282,9 @@ export const verifyRegistrationOtp = async ({ email, otp }) => {
 };
 
 /**
- * Register a new user (STUDENT or WARDEN role).
+ * Register a new STUDENT (public self-registration is student-only, see decision.md).
  * Validates unique email, OTP verification, verifies hostel hierarchy,
- * atomically reserves room occupancy (for students), and returns safe user + JWT token.
+ * atomically reserves room occupancy, and returns safe user + JWT token.
  */
 export const registerUser = async (userData) => {
   const email = (userData.email || '').trim().toLowerCase();
@@ -308,7 +309,12 @@ export const registerUser = async (userData) => {
       if (new Date() > otpDoc.expiresAt) {
         await Otp.deleteOne({ _id: otpDoc._id });
         throw ApiError.badRequest('The verification code has expired. Please request a new code.');
+      } else if (otpDoc.attempts >= 5) {
+        await Otp.deleteOne({ _id: otpDoc._id });
+        throw ApiError.badRequest('Too many incorrect attempts. Please request a new verification code.');
       } else if (otpDoc.otp !== String(userData.otp).trim()) {
+        otpDoc.attempts += 1;
+        await otpDoc.save();
         throw ApiError.badRequest('Invalid verification code.');
       } else {
         otpVerified = true;
@@ -337,6 +343,11 @@ export const registerUser = async (userData) => {
 
   let isReRegistration = false;
   if (existingUser) {
+    // The OTP proves ownership of this email only. A record found through the Student ID
+    // that belongs to a different email is someone else's account and must never be taken over.
+    if (existingUser.email !== email) {
+      throw ApiError.conflict('A student account with this Student ID already exists.');
+    }
     // If user did not provide an OTP verification, check existing password
     if (!otpVerified && !userData.otp) {
       const isPasswordValid = await comparePassword(userData.password, existingUser.passwordHash);
@@ -358,11 +369,9 @@ export const registerUser = async (userData) => {
     throw ApiError.badRequest('Referenced hostel does not exist or is inactive.');
   }
 
-  // Role resolution & privilege escalation defense
-  let role = ROLES.STUDENT;
-  if (userData.role === ROLES.WARDEN) {
-    role = ROLES.WARDEN;
-  } else if (userData.role && userData.role !== ROLES.STUDENT) {
+  // Privilege escalation defense: public self-registration is strictly STUDENT.
+  // Wardens, staff, authority and admins are provisioned by an administrator.
+  if (userData.role && userData.role !== ROLES.STUDENT) {
     await logSecurityEvent({
       eventType: SECURITY_EVENT_TYPES.PRIVILEGE_ESCALATION_ATTEMPT,
       severity: SECURITY_SEVERITIES.HIGH,
@@ -370,48 +379,13 @@ export const registerUser = async (userData) => {
       details: {
         attemptedRole: userData.role,
         enforcedRole: ROLES.STUDENT,
-        message: 'Client attempted to register administrative role via public registration endpoint.',
+        message: 'Client attempted to register a non-student role via public registration endpoint.',
       },
     });
-    throw ApiError.badRequest('Public self-registration is restricted to STUDENT and WARDEN accounts. Administrative roles must be provisioned by a SUPER_ADMIN.');
+    throw ApiError.badRequest('Public self-registration is restricted to STUDENT accounts. Other roles must be provisioned by an administrator.');
   }
 
   const passwordHash = await hashPassword(userData.password);
-
-  // WARDEN REGISTRATION FLOW
-  if (role === ROLES.WARDEN) {
-    const cleanedData = {
-      name: userData.name.trim(),
-      email,
-      passwordHash,
-      role: ROLES.WARDEN,
-      isActive: true,
-      isEmailVerified: true,
-      hostelId: hostel._id,
-    };
-
-    if (userData.phone) cleanedData.phone = userData.phone.trim();
-    if (userData.employeeId) cleanedData.employeeId = userData.employeeId.trim().toUpperCase();
-    if (userData.departmentId) cleanedData.departmentId = userData.departmentId;
-
-    let savedUser;
-    if (isReRegistration && existingUser) {
-      existingUser.name = cleanedData.name;
-      existingUser.email = cleanedData.email;
-      existingUser.hostelId = cleanedData.hostelId;
-      existingUser.isEmailVerified = true;
-      if (cleanedData.phone) existingUser.phone = cleanedData.phone;
-      if (cleanedData.employeeId) existingUser.employeeId = cleanedData.employeeId;
-      await existingUser.save();
-      savedUser = existingUser;
-    } else {
-      savedUser = await User.create(cleanedData);
-    }
-
-    const safeUser = sanitizeUser(savedUser);
-    const token = signToken({ userId: savedUser._id, role: savedUser.role });
-    return { user: safeUser, token, isReRegistration };
-  }
 
   // STUDENT REGISTRATION FLOW
   // Validate required hostel allocation hierarchy fields
@@ -482,7 +456,6 @@ export const registerUser = async (userData) => {
   try {
     if (isReRegistration && existingUser) {
       existingUser.name = cleanedData.name;
-      existingUser.email = cleanedData.email;
       existingUser.hostelId = cleanedData.hostelId;
       existingUser.blockId = cleanedData.blockId;
       existingUser.floorId = cleanedData.floorId;

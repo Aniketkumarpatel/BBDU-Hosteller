@@ -13,6 +13,7 @@ import apiRoutes from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 import { mongoSanitize } from './middleware/mongoSanitize.js';
 import { globalApiLimiter } from './middleware/rateLimiter.js';
+import { isOriginAllowed } from './utils/corsOrigin.js';
 
 const app = express();
 
@@ -26,12 +27,17 @@ app.use(
   })
 );
 
-// CORS - allow all origins so requests from localhost, LAN IPs (mobile/tablet), and deployments never fail
+// CORS - strictly allow configured frontend origin(s). Outside production, localhost and
+// private network addresses are also allowed so phones and tablets on the same Wi-Fi can test.
+const allowedOrigins = env.CLIENT_URL.split(',').map((o) => o.trim()).filter(Boolean);
 app.use(
   cors({
-    origin: (_origin, callback) => {
-      // Allow all origins with credentials support
-      callback(null, true);
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin, { allowedOrigins, isProduction: env.isProduction })) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS request from unauthorized origin blocked.'));
+      }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

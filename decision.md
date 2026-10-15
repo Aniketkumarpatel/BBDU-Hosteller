@@ -460,6 +460,24 @@
 
 ---
 
+### DEC-034: Review of the Merged Work From the Second Developer, and Its Security Fixes
+- **Date**: 2026-10-15
+- **Status**: Accepted; step 1 of 5 done (security). Steps 2 to 5 (scope, layouts, theme, docs) follow as separate commits.
+- **Context**: A second developer pushed 15 commits (email OTP registration, photo attachments, Mess and Virtual Visit entries, a rewritten register page, dev tooling). The merged tree built and its tests passed, so it was reviewed line by line against `decision.md`. Findings that break recorded decisions or open a security hole were fixed before anything is deployed; the features themselves are kept.
+- **Alternatives Considered**:
+  - *Alternative A: Merge as is*: Fast, but ships an account takeover, a public path to a Warden account and an open CORS policy.
+  - *Alternative B: Revert his commits*: Safe, but throws away working features and the OTP registration the owner wants.
+  - *Alternative C: Keep the features and fix the defects on top, one concern per commit (Selected)*: Each fix has a test, so a later change cannot silently bring the hole back.
+- **Rationale (step 1 fixes)**:
+  - *Public Warden registration removed* (validator, service, register page tab). DEC-004 (five bounded roles) and DEC-007 (validators reject non-STUDENT roles in public registration) keep self-registration strictly STUDENT, and a Warden can reset other users' passwords (DEC-022), so a self-made Warden account was an account takeover path.
+  - *Takeover by Student ID closed*: a record found through a Student ID that belongs to a different email is never re-registered, so a verified email can no longer rewrite someone else's account (email, room) and receive a login token for it. The email of an existing account is never rewritten.
+  - *OTP never exposed in production*: the code is printed and returned only outside production; in production a missing mail account is a 503, not a silent fallback that hands the code to the caller. Mail server error text stays in the log.
+  - *CORS restored to the configured origins*, with localhost and private network addresses allowed only outside production so phones can test. The host is parsed, not matched as text, so look-alike names such as `evil-localhost.com` are refused (`utils/corsOrigin.js`).
+  - *SMTP certificate checking back on* (`rejectUnauthorized: false` removed), user text escaped in the email HTML, the code made with `crypto.randomInt`, and wrong codes sent to `/register` are counted and locked after five tries, like `/verify-otp`.
+- **Consequences**: A genuine returning student re-registers only with the same email. Wardens are created by an administrator, as before. Tests: Warden registration test changed to assert refusal; 10 new tests (6 CORS, takeover, attempt lock, production exposure, escaping). Not done in this step and tracked as follow-ups: OTP stored as plain text (5 minute TTL), `isExisting` in the send-otp reply reveals whether an account exists, the `NODE_ENV=test` OTP bypass inside `registerUser`, and the three scope and layout issues in later steps. Email sending needs the new `nodemailer` package installed (`npm install` in `backend`) and `EMAIL_USER` and `EMAIL_PASS` set; until then production returns 503 and development prints the code.
+
+---
+
 ## Decision Log Template (For New Tasks)
 
 When making any new non-trivial decision, copy and fill out this template at the bottom of this file:
