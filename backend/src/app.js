@@ -60,9 +60,16 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // NoSQL Operator Injection Sanitizer (must run after body parsers)
 app.use(mongoSanitize);
 
-// Static file uploads
-app.use('/uploads', express.static(path.resolve(__appDirname, '../uploads')));
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+// Static file uploads. Every file is served with a sandboxing policy, so even a file that slipped
+// past the upload checks cannot run scripts on this site (DEC-034).
+const uploadHeaders = {
+  setHeaders: (res) => {
+    res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox");
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  },
+};
+app.use('/uploads', express.static(path.resolve(__appDirname, '../uploads'), uploadHeaders));
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), uploadHeaders));
 
 // API routes
 app.use('/api', apiRoutes);

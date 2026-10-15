@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import ApiError from '../utils/ApiError.js';
+import { safeExtension } from '../utils/uploadFiles.js';
 
 import { fileURLToPath } from 'url';
 
@@ -25,7 +26,8 @@ const storage = multer.diskStorage({
   },
   filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname).toLowerCase();
+    // The extension comes from the checked file type, never from the client's file name (DEC-034)
+    const ext = safeExtension(file.mimetype);
     const isVid = file.fieldname === 'video' || file.fieldname === 'videos';
     const prefix = isVid ? 'room-video' : 'room-photo';
     cb(null, `${prefix}-${uniqueSuffix}${ext}`);

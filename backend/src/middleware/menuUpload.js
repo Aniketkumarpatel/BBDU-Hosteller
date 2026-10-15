@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import ApiError from '../utils/ApiError.js';
+import { safeExtension } from '../utils/uploadFiles.js';
 
 // Dedicated secure directory for incoming menu timetable uploads
 const menuUploadDir = path.join(process.cwd(), 'uploads', 'menus');
@@ -15,7 +16,10 @@ const storage = multer.diskStorage({
   },
   filename: (_req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname).toLowerCase();
+    // Stored under the extension of the checked type; the typed name is used only when the browser
+    // sent a generic type and the name is one of the allowed document extensions (DEC-034)
+    const typed = path.extname(file.originalname).toLowerCase();
+    const ext = safeExtension(file.mimetype) || (['.jpg', '.jpeg', '.png', '.pdf'].includes(typed) ? typed : '');
     cb(null, `menu-upload-${uniqueSuffix}${ext}`);
   },
 });

@@ -3,6 +3,8 @@ import Block from '../models/Block.js';
 import Floor from '../models/Floor.js';
 import Room from '../models/Room.js';
 import ApiError from '../utils/ApiError.js';
+import { ROLES } from '../constants/roles.js';
+import { isRoomMediaUrl, removeUploadedFiles } from '../utils/uploadFiles.js';
 
 const DEFAULT_FACILITIES = [
   'High-Speed Campus Wi-Fi',
@@ -17,6 +19,42 @@ const DEFAULT_FACILITIES = [
 
 const MAX_PHOTOS = 6;
 const MAX_VIDEOS = 2;
+const MAX_DESCRIPTION = 2000;
+const MAX_FACILITIES = 20;
+const MAX_FACILITY_LENGTH = 100;
+
+/**
+ * A Warden manages the media of rooms in their own hostel only (the hostel rule of DEC-028
+ * applied to rooms). A Super Admin may manage every room. An inactive room is treated as missing.
+ */
+const assertMayManageRoom = (user, room) => {
+  if (!room || !room.isActive) {
+    throw ApiError.notFound('Room not found or currently inactive.');
+  }
+  if (user?.role === ROLES.SUPER_ADMIN) return;
+  if (!user?.hostelId || String(user.hostelId) !== String(room.hostelId)) {
+    throw ApiError.forbidden('You can manage media only for rooms in your own hostel.');
+  }
+};
+
+/** Facilities as a clean list of short strings, or a 400 when the list is unreasonable. */
+const cleanFacilities = (value) => {
+  const list = (Array.isArray(value) ? value : String(value).split(','))
+    .map((item) => String(item).trim())
+    .filter(Boolean);
+  if (list.length > MAX_FACILITIES || list.some((item) => item.length > MAX_FACILITY_LENGTH)) {
+    throw ApiError.badRequest(`Up to ${MAX_FACILITIES} facilities of ${MAX_FACILITY_LENGTH} characters each are allowed.`);
+  }
+  return list;
+};
+
+const cleanDescription = (value) => {
+  const text = String(value).trim();
+  if (text.length > MAX_DESCRIPTION) {
+    throw ApiError.badRequest(`The description can have up to ${MAX_DESCRIPTION} characters.`);
+  }
+  return text;
+};
 
 /**
  * Explore rooms with full virtual tour media, live availability, and hierarchy.
@@ -229,9 +267,7 @@ export const uploadRoomMedia = async (req, res, next) => {
   try {
     const { id } = req.params;
     const room = await Room.findById(id);
-    if (!room) {
-      throw ApiError.notFound('Room not found.');
-    }
+    assertMayManageRoom(req.user, room);
 
     let currentPhotos = Array.isArray(room.photos) ? [...room.photos] : [];
     let currentVideos = Array.isArray(room.videos) ? [...room.videos] : [];
@@ -280,17 +316,11 @@ export const uploadRoomMedia = async (req, res, next) => {
     }
 
     if (req.body.description !== undefined) {
-      room.description = String(req.body.description).trim();
+      room.description = cleanDescription(req.body.description);
     }
 
     if (req.body.facilities) {
-      const facList = Array.isArray(req.body.facilities)
-        ? req.body.facilities
-        : String(req.body.facilities)
-            .split(',')
-            .map((s) => s.trim())
-            .filter(Boolean);
-      room.facilities = facList;
+      room.facilities = cleanFacilities(req.body.facilities);
     }
 
     await room.save();
@@ -306,6 +336,8 @@ export const uploadRoomMedia = async (req, res, next) => {
       data: populated,
     });
   } catch (err) {
+    // The request was refused after multer already saved the files: do not leave them behind
+    await removeUploadedFiles(req.files);
     next(err);
   }
 };
@@ -319,8 +351,10 @@ export const deleteRoomMediaItem = async (req, res, next) => {
     const { type, url } = req.body;
 
     const room = await Room.findById(id);
-    if (!room) {
-      throw ApiError.notFound('Room not found.');
+    assertMayManageRoom(req.user, room);
+
+    if (!['photo', 'video', 'panorama'].includes(type)) {
+      throw ApiError.badRequest('Media type must be photo, video or panorama.');
     }
 
     if (type === 'photo') {
@@ -356,6 +390,9 @@ export const updateRoomMediaMeta = async (req, res, next) => {
     const { id } = req.params;
     const { photos, videos, panorama360, facilities, description } = req.body;
 
+    const existing = await Room.findById(id);
+    assertMayManageRoom(req.user, existing);
+
     if (Array.isArray(photos) && photos.length > MAX_PHOTOS) {
       throw ApiError.badRequest(`Maximum ${MAX_PHOTOS} photos allowed.`);
     }
@@ -364,12 +401,19 @@ export const updateRoomMediaMeta = async (req, res, next) => {
       throw ApiError.badRequest(`Maximum ${MAX_VIDEOS} short videos allowed.`);
     }
 
+    // Only files this server stored for rooms may be attached: never another website or a script
+    const mediaUrls = [...(Array.isArray(photos) ? photos : []), ...(Array.isArray(videos) ? videos : [])];
+    if (typeof panorama360 === 'string') mediaUrls.push(panorama360);
+    if (mediaUrls.some((url) => !isRoomMediaUrl(url))) {
+      throw ApiError.badRequest('Media links must be files uploaded through the room media studio.');
+    }
+
     const update = {};
     if (Array.isArray(photos)) update.photos = photos;
     if (Array.isArray(videos)) update.videos = videos;
     if (typeof panorama360 === 'string' || panorama360 === null) update.panorama360 = panorama360;
-    if (Array.isArray(facilities)) update.facilities = facilities;
-    if (typeof description === 'string') update.description = description.trim();
+    if (Array.isArray(facilities)) update.facilities = cleanFacilities(facilities);
+    if (typeof description === 'string') update.description = cleanDescription(description);
 
     const updatedRoom = await Room.findByIdAndUpdate(id, update, { new: true })
       .populate('hostelId', 'name code')

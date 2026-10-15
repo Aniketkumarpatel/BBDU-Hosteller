@@ -739,6 +739,26 @@ test('29. Student submits complaint WITH JPG attachment (multipart/form-data)', 
   assert.equal(body.data.attachmentMimeType, 'image/jpeg');
 });
 
+test('29b. A photo sent under an html file name is stored under a safe extension', async () => {
+  const formData = new FormData();
+  formData.append('title', 'Photo with a script file name');
+  formData.append('description', 'The file is named .html but sent as a PNG image');
+  formData.append('category', 'PLUMBING');
+  formData.append('issueType', 'WATER_LEAKAGE');
+  formData.append('priority', 'LOW');
+  formData.append('attachment', new Blob(['not really a picture'], { type: 'image/png' }), 'evil.html');
+
+  const res = await fetch(`${baseUrl}/api/complaints`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${student1Token}` },
+    body: formData,
+  });
+  const body = await res.json();
+  assert.equal(res.status, 201);
+  assert.match(body.data.attachmentUrl, /\.png$/);
+  assert.ok(!/\.html/i.test(body.data.attachmentUrl));
+});
+
 test('30. Student submits complaint WITH PNG attachment', async () => {
   const formData = new FormData();
   formData.append('title', 'Damaged study chair leg photo');
